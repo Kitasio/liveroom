@@ -10,7 +10,7 @@ defmodule TrackWeb.RoomChannel do
   end
 
   def handle_in("mouse_move", %{"x" => x, "y" => y} = params, socket) do
-    IO.inspect(socket, label: "SOCKET")
+    IO.inspect(socket.assigns)
     hash = Map.get(params, "id", :erlang.phash2(socket.channel_pid))
     color = Map.get(params, "color", random_color(hash))
 

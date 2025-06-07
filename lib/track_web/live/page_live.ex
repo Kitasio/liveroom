@@ -12,6 +12,8 @@ defmodule TrackWeb.PageLive do
   end
 
   def render(assigns) do
+    IO.inspect(assigns)
+
     ~H"""
     <main id="screen" class="h-screen">
       <div id="dots"></div>

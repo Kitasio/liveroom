@@ -8,6 +8,17 @@ defmodule TrackWeb.Router do
     plug :put_root_layout, html: {TrackWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug TrackWeb.AnonUser, nil
+    plug :put_user_token
+  end
+
+  defp put_user_token(conn, _) do
+    if anon_user = conn.assigns[:anon_user] do
+      token = Phoenix.Token.sign(conn, "user socket", anon_user)
+      assign(conn, :user_token, token)
+    else
+      conn
+    end
   end
 
   pipeline :api do
