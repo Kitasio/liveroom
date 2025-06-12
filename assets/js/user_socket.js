@@ -124,7 +124,7 @@ function setupMouseMoveTracking(channel) {
 }
 
 function handlePriceInputChange(payload) {
-  const { value } = payload;
+  const { value, balance } = payload;
   console.log(`Input change, value - ${value}`)
 
   const priceInput = document.querySelector("#price-input")
@@ -136,6 +136,20 @@ function handlePriceInputChange(payload) {
   priceInput.value = value;
 }
 
+function handleBalanceInputChange(payload) {
+  console.log(`Balance payload: ${JSON.stringify(payload)}`)
+  const { balance } = payload;
+  console.log(`Input change, balance - ${balance}`)
+
+  const balanceEl = document.querySelector("#balance")
+  if (!balanceEl) {
+    console.error("Balance element not found!");
+    return;
+  }
+
+  balanceEl.innerText = balance;
+}
+
 function setupPriceInputChangeTracking(channel) {
   const priceInput = document.querySelector("#price-input")
   if (!priceInput) {
@@ -143,10 +157,17 @@ function setupPriceInputChangeTracking(channel) {
     return;
   }
 
+  const balance = document.querySelector("#balance")
+  if (!balance) {
+    console.error("Balance element not found!");
+    return;
+  }
+
   // Add event listener to the screen
   priceInput.addEventListener("input", (e) => {
     channel.push("price_input_change", {
-      value: e.target.value
+      value: e.target.value,
+      balance: balance.innerText,
     })
   });
 
@@ -154,15 +175,34 @@ function setupPriceInputChangeTracking(channel) {
 }
 
 
+function setupBalanceInputChangeTracking(channel) {
+  const balanceInput = document.querySelector("#balance-input")
+  if (!balanceInput) {
+    console.error("Balance input element not found!");
+    return;
+  }
+
+  // Add event listener to the screen
+  balanceInput.addEventListener("input", (e) => {
+    channel.push("balance_input_change", {
+      balance: e.target.value,
+    })
+  });
+
+  console.log("Balance input change tracking setup complete.");
+}
+
 // Handle events
 channel.on("mouse_move", handleMouseMove);
 channel.on("price_input_change", handlePriceInputChange);
+channel.on("balance_input_change", handleBalanceInputChange);
 
 channel.join()
   .receive("ok", resp => {
     console.log("Joined successfully", resp);
     setupMouseMoveTracking(channel); // Setup tracking after successful join
     setupPriceInputChangeTracking(channel); // Setup price input change tracking
+    setupBalanceInputChangeTracking(channel);
   })
   .receive("error", resp => { console.log("Unable to join", resp) })
 

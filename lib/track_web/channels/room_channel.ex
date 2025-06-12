@@ -2,7 +2,7 @@ defmodule TrackWeb.RoomChannel do
   use Phoenix.Channel
 
   def join("room:lobby", _message, socket) do
-    {:ok, socket}
+    {:ok, assign(socket, user_balance: 0)}
   end
 
   def join("room:" <> _private_room_id, _params, _socket) do
@@ -23,8 +23,26 @@ defmodule TrackWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  def handle_in("price_input_change", %{"value" => value}, socket) do
-    broadcast!(socket, "price_input_change", %{"value" => value})
+  def handle_in("price_input_change", %{"value" => value, "balance" => balance}, socket) do
+    broadcast!(socket, "price_input_change", %{"value" => value, "balance" => balance})
+    {:noreply, socket}
+  end
+
+  def handle_in("balance_input_change", %{"balance" => balance}, socket) do
+    push(socket, "balance_input_change", %{balance: balance})
+    {:noreply, assign(socket, user_balance: balance)}
+  end
+
+  intercept ["price_input_change"]
+
+  def handle_out("price_input_change", %{"value" => value, "balance" => balance}, socket) do
+    user_balance = socket.assigns[:user_balance]
+    IO.inspect(user_balance, label: "HANDLE OUT USER BALANCE")
+
+    user_value =
+      String.to_integer(user_balance) / String.to_integer(balance) * String.to_integer(value)
+
+    push(socket, "price_input_change", %{"value" => user_value, "balance" => balance})
     {:noreply, socket}
   end
 
