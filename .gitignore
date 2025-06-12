@@ -35,3 +35,4 @@ track-*.tar
 npm-debug.log
 /assets/node_modules/
 
+.aider*

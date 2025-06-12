@@ -57,7 +57,6 @@ socket.connect()
 // Let's assume you have a channel with a topic named `room` and the
 // subtopic is its id - in this case lobby:
 const channel = socket.channel("room:lobby", {})
-const screen = document.querySelector("#screen")
 
 function throttle(callback, limit) {
   let lastCall = 0;
@@ -70,20 +69,16 @@ function throttle(callback, limit) {
   };
 }
 
-const throttledMouseMove = throttle((e) => {
-  channel.push("mouse_move", {
-    x: e.clientX,
-    y: e.clientY
-  });
-}, 24);
-
-screen.addEventListener("mousemove", throttledMouseMove);
-
-channel.on("mouse_move", payload => {
+// Handle incoming mouse move events from the channel
+function handleMouseMove(payload) {
   const { id, x, y, color } = payload;
 
-  // Get the parent container
+  // Get the parent container for dots
   const dotsContainer = document.querySelector("#dots");
+  if (!dotsContainer) {
+    console.error("Dots container not found!");
+    return;
+  }
 
   // Try to find an existing dot for this ID
   let dot = document.getElementById(`dot-${id}`);
@@ -93,10 +88,10 @@ channel.on("mouse_move", payload => {
     dot = document.createElement("div");
     dot.id = `dot-${id}`;
     dot.className = `absolute ${color} rounded-full w-4 h-4 pointer-events-none transition-all duration-100`;
-
     dotsContainer.appendChild(dot);
   } else {
     // If it exists, update the color class (in case it changes)
+    // This is a simple way to update color, more robust would be to check if class needs changing
     dot.className = `absolute ${color} rounded-full w-4 h-4 pointer-events-none transition-all duration-100`;
   }
 
@@ -104,10 +99,39 @@ channel.on("mouse_move", payload => {
   dot.style.left = `${x}px`;
   dot.style.top = `${y}px`;
   dot.style.transform = "translate(-50%, -50%)";
-});
+}
+
+// Setup mouse tracking on the screen element
+function setupMouseMoveTracking(channel) {
+  const screen = document.querySelector("#screen");
+  if (!screen) {
+    console.error("Screen element not found!");
+    return;
+  }
+
+  // Throttle mouse move events to avoid flooding the channel
+  const throttledMouseMove = throttle((e) => {
+    channel.push("mouse_move", {
+      x: e.clientX,
+      y: e.clientY
+    });
+  }, 24); // Adjust throttle limit as needed
+
+  // Add event listener to the screen
+  screen.addEventListener("mousemove", throttledMouseMove);
+
+  console.log("Mouse tracking setup complete.");
+}
+
+
+// Handle mouse events
+channel.on("mouse_move", handleMouseMove);
 
 channel.join()
-  .receive("ok", resp => { console.log("Joined successfully", resp) })
+  .receive("ok", resp => {
+    console.log("Joined successfully", resp);
+    setupMouseMoveTracking(channel); // Setup tracking after successful join
+  })
   .receive("error", resp => { console.log("Unable to join", resp) })
 
 export default socket
