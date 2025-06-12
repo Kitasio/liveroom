@@ -33,7 +33,7 @@ defmodule TrackWeb.RoomChannel do
     {:noreply, assign(socket, user_balance: balance)}
   end
 
-  def handle_in("buy_order", %{"amount" => amount, "balance" => balance}, socket) do
+  def handle_in("buy_order", %{"amount" => amount, "balance" => balance, "btc_price" => btc_price}, socket) do
     username = socket.assigns[:username]
     timestamp = DateTime.utc_now() |> DateTime.to_iso8601()
     
@@ -41,14 +41,15 @@ defmodule TrackWeb.RoomChannel do
       "timestamp" => timestamp,
       "action" => "BUY",
       "amount" => amount,
-      "username" => username
+      "username" => username,
+      "btc_price" => btc_price
     })
     
     broadcast!(socket, "buy_order", %{"amount" => amount, "balance" => balance})
     {:noreply, socket}
   end
 
-  def handle_in("sell_order", %{"amount" => amount, "balance" => balance}, socket) do
+  def handle_in("sell_order", %{"amount" => amount, "balance" => balance, "btc_price" => btc_price}, socket) do
     username = socket.assigns[:username]
     timestamp = DateTime.utc_now() |> DateTime.to_iso8601()
     
@@ -56,7 +57,8 @@ defmodule TrackWeb.RoomChannel do
       "timestamp" => timestamp,
       "action" => "SELL",
       "amount" => amount,
-      "username" => username
+      "username" => username,
+      "btc_price" => btc_price
     })
     
     broadcast!(socket, "sell_order", %{"amount" => amount, "balance" => balance})
@@ -79,20 +81,20 @@ defmodule TrackWeb.RoomChannel do
   def handle_out("buy_order", %{"amount" => amount, "balance" => balance}, socket) do
     user_balance = socket.assigns[:user_balance]
     
-    # Calculate user's proportional buy amount based on their balance
-    user_amount = calculate_proportional_amount(user_balance, balance, amount)
+    # Calculate user's proportional dollar amount based on their balance
+    user_dollar_amount = calculate_proportional_amount(user_balance, balance, amount)
     
-    push(socket, "price_input_change", %{"value" => user_amount, "balance" => balance})
+    push(socket, "price_input_change", %{"value" => user_dollar_amount, "balance" => balance})
     {:noreply, socket}
   end
 
   def handle_out("sell_order", %{"amount" => amount, "balance" => balance}, socket) do
     user_balance = socket.assigns[:user_balance]
     
-    # Calculate user's proportional sell amount based on their balance
-    user_amount = calculate_proportional_amount(user_balance, balance, amount)
+    # Calculate user's proportional dollar amount based on their balance
+    user_dollar_amount = calculate_proportional_amount(user_balance, balance, amount)
     
-    push(socket, "price_input_change", %{"value" => user_amount, "balance" => balance})
+    push(socket, "price_input_change", %{"value" => user_dollar_amount, "balance" => balance})
     {:noreply, socket}
   end
 

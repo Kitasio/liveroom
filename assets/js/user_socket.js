@@ -212,9 +212,13 @@ function setupBuyButtonTracking(channel) {
   }
 
   buyBtn.addEventListener("click", (e) => {
+    const livePriceEl = document.querySelector("#live-price");
+    const currentPrice = livePriceEl ? livePriceEl.innerText.replace('$', '').replace(',', '') : "0";
+    
     channel.push("buy_order", {
       amount: priceInput.value,
       balance: balance.innerText,
+      btc_price: currentPrice
     })
   });
 
@@ -241,9 +245,13 @@ function setupSellButtonTracking(channel) {
   }
 
   sellBtn.addEventListener("click", (e) => {
+    const livePriceEl = document.querySelector("#live-price");
+    const currentPrice = livePriceEl ? livePriceEl.innerText.replace('$', '').replace(',', '') : "0";
+    
     channel.push("sell_order", {
       amount: priceInput.value,
       balance: balance.innerText,
+      btc_price: currentPrice
     })
   });
 
@@ -251,8 +259,8 @@ function setupSellButtonTracking(channel) {
 }
 
 function handleOrderLog(payload) {
-  const { timestamp, action, amount, username } = payload;
-  console.log(`Order log: ${action} ${amount} by ${username} at ${timestamp}`);
+  const { timestamp, action, amount, username, btc_price } = payload;
+  console.log(`Order log: ${action} $${amount} by ${username} at ${timestamp}`);
 
   const orderLog = document.querySelector("#order-log");
   if (!orderLog) {
@@ -270,7 +278,8 @@ function handleOrderLog(payload) {
   orderEntry.innerHTML = `
     <span class="text-xs text-gray-500">${timeStr}</span>
     <span class="${actionClass} font-semibold">${action}</span>
-    <span>${amount} BTC</span>
+    <span>$${amount}</span>
+    <span class="text-xs">@ $${btc_price}</span>
     <span class="text-xs">by ${username}</span>
   `;
 
