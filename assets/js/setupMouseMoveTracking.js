@@ -19,6 +19,8 @@ export function setupMouseMoveTracking(channel) {
   screen.addEventListener("mousemove", throttledMouseMove);
 
   console.log("Mouse tracking setup complete.");
+
+  channel.on("mouse_move", handleMouseMove);
 }
 
 function throttle(callback, limit) {

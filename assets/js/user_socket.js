@@ -3,12 +3,12 @@
 
 // Bring in Phoenix channels client library:
 import { Socket } from "phoenix"
-import { handleMouseMove, setupMouseMoveTracking } from "./setupMouseMoveTracking";
-import { handleBalanceInputChange, handleBalanceUpdate, setupBalanceInputChangeTracking } from "./setupBalanceInputChangeTracking";
-import { handlePriceInputChange, setupPriceInputChangeTracking } from "./setupPriceInputChangeTracking";
-import { handleOrderLog } from "./handleOrderLog";
+import { setupMouseMoveTracking } from "./setupMouseMoveTracking";
+import { setupBalanceInputChangeTracking } from "./setupBalanceInputChangeTracking";
+import { setupPriceInputChangeTracking } from "./setupPriceInputChangeTracking";
 import { setupSellButtonTracking } from "./setupSellButtonTracking";
 import { setupBuyButtonTracking } from "./setupBuyButtonTracking";
+import { setupOrderLogTracking } from "./setupOrderLogTracking";
 
 // And connect to the path in "lib/track_web/endpoint.ex". We pass the
 // token for authentication. Read below how it should be used.
@@ -64,13 +64,6 @@ socket.connect()
 // subtopic is its id - in this case lobby:
 const channel = socket.channel("room:lobby", {})
 
-// Handle events
-channel.on("order_log", handleOrderLog);
-channel.on("mouse_move", handleMouseMove);
-channel.on("balance_input_change", handleBalanceInputChange);
-channel.on("update_balance", handleBalanceUpdate);
-channel.on("price_input_change", handlePriceInputChange);
-
 channel.join()
   .receive("ok", resp => {
     console.log("Joined successfully", resp);
@@ -79,6 +72,7 @@ channel.join()
     setupBalanceInputChangeTracking(channel);
     setupBuyButtonTracking(channel);
     setupSellButtonTracking(channel);
+    setupOrderLogTracking(channel);
   })
   .receive("error", resp => { console.log("Unable to join", resp) })
 

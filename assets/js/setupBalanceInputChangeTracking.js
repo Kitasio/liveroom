@@ -13,6 +13,9 @@ export function setupBalanceInputChangeTracking(channel) {
   });
 
   console.log("Balance input change tracking setup complete.");
+
+  channel.on("balance_input_change", handleBalanceInputChange);
+  channel.on("update_balance", handleBalanceUpdate);
 }
 
 export function handleBalanceInputChange(payload) {

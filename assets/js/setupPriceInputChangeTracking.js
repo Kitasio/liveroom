@@ -20,6 +20,8 @@ export function setupPriceInputChangeTracking(channel) {
   });
 
   console.log("Price input change tracking setup complete.");
+
+  channel.on("price_input_change", handlePriceInputChange);
 }
 
 export function handlePriceInputChange(payload) {

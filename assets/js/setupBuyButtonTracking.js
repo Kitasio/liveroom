@@ -17,7 +17,7 @@ export function setupBuyButtonTracking(channel) {
     return;
   }
 
-  buyBtn.addEventListener("click", (e) => {
+  buyBtn.addEventListener("click", (_) => {
     const livePriceEl = document.querySelector("#live-price");
     const currentPrice = livePriceEl ? livePriceEl.innerText.replace('$', '').replace(',', '') : "0";
 

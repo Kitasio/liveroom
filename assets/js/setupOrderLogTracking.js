@@ -1,3 +1,7 @@
+export function setupOrderLogTracking(channel) {
+  channel.on("order_log", handleOrderLog);
+}
+
 export function handleOrderLog(payload) {
   const { timestamp, action, amount, username, btc_price } = payload;
   console.log(`Order log: ${action} $${amount} by ${username} at ${timestamp}`);
