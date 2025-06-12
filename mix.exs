@@ -58,7 +58,8 @@ defmodule Track.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      {:apexcharts, github: "apexcharts/apexcharts.js", app: false, compile: false}
     ]
   end
 

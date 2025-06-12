@@ -25,6 +25,12 @@ defmodule TrackWeb.Router do
     plug :accepts, ["json"]
   end
 
+  scope "/api", TrackWeb do
+    pipe_through :api
+
+    get "/candles", CandlesController, :index
+  end
+
   scope "/", TrackWeb do
     pipe_through :browser
 

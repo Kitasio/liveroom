@@ -23,9 +23,45 @@ import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import topbar from "../vendor/topbar"
+import ApexCharts from 'apexcharts'
 
 const Hooks = {}
 
+Hooks.CandleChart = {
+  mounted() {
+    fetch("/api/candles")
+      .then(res => res.json())
+      .then(data => {
+        const series = data.map(candle => ({
+          x: new Date(candle.time * 1000),
+          y: [candle.open, candle.high, candle.low, candle.close]
+        }));
+
+        const options = {
+          chart: {
+            type: 'candlestick',
+            height: 350
+          },
+          series: [{ data: series }],
+          xaxis: { type: 'datetime' }
+        };
+
+        new ApexCharts(this.el, options).render();
+      });
+  }
+}
+
+Hooks.LivePrice = {
+  mounted() {
+    const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const price = data.c; // last price
+      this.el.textContent = `$${price}`;
+    };
+  }
+}
 
 function throttle(callback, limit) {
   let lastCall = 0
