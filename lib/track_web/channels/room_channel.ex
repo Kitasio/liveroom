@@ -82,7 +82,7 @@ defmodule TrackWeb.RoomChannel do
     IO.inspect(user_balance, label: "HANDLE OUT USER BALANCE")
 
     user_value =
-      String.to_integer(user_balance) / String.to_integer(balance) * String.to_integer(value)
+      to_int(user_balance) / to_int(balance) * to_int(value)
 
     push(socket, "price_input_change", %{"value" => user_value, "balance" => balance})
     {:noreply, socket}
@@ -136,6 +136,12 @@ defmodule TrackWeb.RoomChannel do
     })
 
     {:noreply, socket}
+  end
+
+  defp to_int(value) when is_number(value), do: value
+
+  defp to_int(value) when is_binary(value) do
+    String.to_integer(value)
   end
 
   defp get_username(socket) do
