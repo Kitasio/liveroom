@@ -33,6 +33,11 @@ defmodule TrackWeb.RoomChannel do
     {:noreply, assign(socket, user_balance: balance)}
   end
 
+  def handle_in("update_balance", %{"balance" => balance}, socket) do
+    push(socket, "update_balance", %{balance: balance})
+    {:noreply, assign(socket, user_balance: balance)}
+  end
+
   def handle_in(
         "buy_order",
         %{"amount" => amount, "balance" => balance, "btc_price" => btc_price},
@@ -93,9 +98,10 @@ defmodule TrackWeb.RoomChannel do
 
     # Calculate user's proportional dollar amount based on their balance
     user_dollar_amount = calculate_proportional_amount(user_balance, balance, amount)
+    new_user_balance = to_int(balance) - to_int(user_dollar_amount)
 
-    push(socket, "price_input_change", %{"value" => user_dollar_amount, "balance" => balance})
-    {:noreply, socket}
+    push(socket, "update_balance", %{"balance" => new_user_balance})
+    {:noreply, assign(socket, user_balance: new_user_balance)}
   end
 
   def handle_out("sell_order", %{"amount" => amount, "balance" => balance}, socket) do
@@ -103,9 +109,10 @@ defmodule TrackWeb.RoomChannel do
 
     # Calculate user's proportional dollar amount based on their balance
     user_dollar_amount = calculate_proportional_amount(user_balance, balance, amount)
+    new_user_balance = to_int(balance) - to_int(user_dollar_amount)
 
-    push(socket, "price_input_change", %{"value" => user_dollar_amount, "balance" => balance})
-    {:noreply, socket}
+    push(socket, "update_balance", %{"balance" => new_user_balance})
+    {:noreply, assign(socket, user_balance: new_user_balance)}
   end
 
   def handle_out(
