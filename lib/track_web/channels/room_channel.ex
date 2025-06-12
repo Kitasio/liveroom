@@ -33,39 +33,49 @@ defmodule TrackWeb.RoomChannel do
     {:noreply, assign(socket, user_balance: balance)}
   end
 
-  def handle_in("buy_order", %{"amount" => amount, "balance" => balance, "btc_price" => btc_price}, socket) do
+  def handle_in(
+        "buy_order",
+        %{"amount" => amount, "balance" => balance, "btc_price" => btc_price},
+        socket
+      ) do
     username = socket.assigns[:username]
     timestamp = DateTime.utc_now() |> DateTime.to_iso8601()
-    
+
     broadcast!(socket, "order_log", %{
       "timestamp" => timestamp,
       "action" => "BUY",
       "amount" => amount,
       "username" => username,
-      "btc_price" => btc_price
+      "btc_price" => btc_price,
+      "initiator_balance" => balance
     })
-    
+
     broadcast!(socket, "buy_order", %{"amount" => amount, "balance" => balance})
     {:noreply, socket}
   end
 
-  def handle_in("sell_order", %{"amount" => amount, "balance" => balance, "btc_price" => btc_price}, socket) do
+  def handle_in(
+        "sell_order",
+        %{"amount" => amount, "balance" => balance, "btc_price" => btc_price},
+        socket
+      ) do
     username = socket.assigns[:username]
     timestamp = DateTime.utc_now() |> DateTime.to_iso8601()
-    
+
     broadcast!(socket, "order_log", %{
       "timestamp" => timestamp,
       "action" => "SELL",
       "amount" => amount,
       "username" => username,
-      "btc_price" => btc_price
+      "btc_price" => btc_price,
+      "initiator_balance" => balance
     })
-    
+
     broadcast!(socket, "sell_order", %{"amount" => amount, "balance" => balance})
     {:noreply, socket}
   end
 
-  intercept ["price_input_change", "buy_order", "sell_order"]
+  intercept ["price_input_change", "buy_order", "sell_order", "order_log"]
 
   def handle_out("price_input_change", %{"value" => value, "balance" => balance}, socket) do
     user_balance = socket.assigns[:user_balance]
@@ -80,29 +90,49 @@ defmodule TrackWeb.RoomChannel do
 
   def handle_out("buy_order", %{"amount" => amount, "balance" => balance}, socket) do
     user_balance = socket.assigns[:user_balance]
-    
+
     # Calculate user's proportional dollar amount based on their balance
     user_dollar_amount = calculate_proportional_amount(user_balance, balance, amount)
-    
+
     push(socket, "price_input_change", %{"value" => user_dollar_amount, "balance" => balance})
     {:noreply, socket}
   end
 
   def handle_out("sell_order", %{"amount" => amount, "balance" => balance}, socket) do
     user_balance = socket.assigns[:user_balance]
-    
+
     # Calculate user's proportional dollar amount based on their balance
     user_dollar_amount = calculate_proportional_amount(user_balance, balance, amount)
-    
+
     push(socket, "price_input_change", %{"value" => user_dollar_amount, "balance" => balance})
+    {:noreply, socket}
+  end
+
+  def handle_out("order_log", %{"timestamp" => timestamp, "action" => action, "amount" => amount, "username" => username, "btc_price" => btc_price} = payload, socket) do
+    user_balance = socket.assigns[:user_balance]
+    
+    # Get the initiator's balance from the original broadcast
+    initiator_balance = Map.get(payload, "initiator_balance", amount)
+    
+    # Calculate user's proportional amount based on their balance
+    user_amount = calculate_proportional_amount(user_balance, initiator_balance, amount)
+
+    push(socket, "order_log", %{
+      "timestamp" => timestamp,
+      "action" => action,
+      "amount" => user_amount,
+      "username" => username,
+      "btc_price" => btc_price
+    })
     {:noreply, socket}
   end
 
   defp get_username(socket) do
     case socket.assigns do
-      %{current_user: username} when is_binary(username) -> 
+      %{current_user: username} when is_binary(username) ->
         username |> String.split("_") |> Enum.join(" ")
-      _ -> 
+
+      _ ->
         "Anonymous"
     end
   end
@@ -111,6 +141,7 @@ defmodule TrackWeb.RoomChannel do
     case {parse_number(user_balance), parse_number(initiator_balance), parse_number(amount)} do
       {user_bal, init_bal, amt} when user_bal > 0 and init_bal > 0 and amt > 0 ->
         user_bal / init_bal * amt
+
       _ ->
         0
     end
@@ -118,8 +149,10 @@ defmodule TrackWeb.RoomChannel do
 
   defp parse_number(value) when is_binary(value) do
     case Float.parse(value) do
-      {num, _} -> num
-      :error -> 
+      {num, _} ->
+        num
+
+      :error ->
         case Integer.parse(value) do
           {num, _} -> num
           :error -> 0
