@@ -123,14 +123,46 @@ function setupMouseMoveTracking(channel) {
   console.log("Mouse tracking setup complete.");
 }
 
+function handlePriceInputChange(payload) {
+  const { value } = payload;
+  console.log(`Input change, value - ${value}`)
 
-// Handle mouse events
+  const priceInput = document.querySelector("#price-input")
+  if (!priceInput) {
+    console.error("Price input element not found!");
+    return;
+  }
+
+  priceInput.value = value;
+}
+
+function setupPriceInputChangeTracking(channel) {
+  const priceInput = document.querySelector("#price-input")
+  if (!priceInput) {
+    console.error("Price input element not found!");
+    return;
+  }
+
+  // Add event listener to the screen
+  priceInput.addEventListener("input", (e) => {
+    channel.push("price_input_change", {
+      value: e.target.value
+    })
+  });
+
+  console.log("Price input change tracking setup complete.");
+}
+
+
+// Handle events
 channel.on("mouse_move", handleMouseMove);
+channel.on("price_input_change", handlePriceInputChange);
 
 channel.join()
   .receive("ok", resp => {
     console.log("Joined successfully", resp);
     setupMouseMoveTracking(channel); // Setup tracking after successful join
+    setupPriceInputChangeTracking(channel); // Setup price input change tracking
   })
   .receive("error", resp => { console.log("Unable to join", resp) })
 

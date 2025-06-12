@@ -23,6 +23,11 @@ defmodule TrackWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  def handle_in("price_input_change", %{"value" => value}, socket) do
+    broadcast!(socket, "price_input_change", %{"value" => value})
+    {:noreply, socket}
+  end
+
   defp random_color(num) do
     class_list = [
       "bg-red-300",
