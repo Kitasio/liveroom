@@ -109,7 +109,7 @@ defmodule TrackWeb.RoomChannel do
 
     # Calculate user's proportional dollar amount based on their balance
     user_dollar_amount = calculate_proportional_amount(user_balance, balance, amount)
-    new_user_balance = parse_number(balance) - parse_number(user_dollar_amount)
+    new_user_balance = parse_number(balance) + parse_number(user_dollar_amount)
 
     push(socket, "update_balance", %{"balance" => new_user_balance})
     {:noreply, assign(socket, user_balance: new_user_balance)}
