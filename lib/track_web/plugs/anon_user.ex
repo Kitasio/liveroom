@@ -29,9 +29,11 @@ defmodule TrackWeb.AnonUser do
     if conn.assigns[:anon_user] do
       conn
     else
+      name = generate_name()
+
       conn
-      |> put_session(:anon_user, generate_name())
-      |> assign(:anon_user, generate_name())
+      |> put_session(:anon_user, name)
+      |> assign(:anon_user, name)
     end
   end
 
