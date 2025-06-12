@@ -87,7 +87,7 @@ defmodule TrackWeb.RoomChannel do
     IO.inspect(user_balance, label: "HANDLE OUT USER BALANCE")
 
     user_value =
-      to_int(user_balance) / to_int(balance) * to_int(value)
+      parse_number(user_balance) / parse_number(balance) * parse_number(value)
 
     push(socket, "price_input_change", %{"value" => user_value, "balance" => balance})
     {:noreply, socket}
@@ -98,7 +98,7 @@ defmodule TrackWeb.RoomChannel do
 
     # Calculate user's proportional dollar amount based on their balance
     user_dollar_amount = calculate_proportional_amount(user_balance, balance, amount)
-    new_user_balance = to_int(balance) - to_int(user_dollar_amount)
+    new_user_balance = parse_number(balance) - parse_number(user_dollar_amount)
 
     push(socket, "update_balance", %{"balance" => new_user_balance})
     {:noreply, assign(socket, user_balance: new_user_balance)}
@@ -109,7 +109,7 @@ defmodule TrackWeb.RoomChannel do
 
     # Calculate user's proportional dollar amount based on their balance
     user_dollar_amount = calculate_proportional_amount(user_balance, balance, amount)
-    new_user_balance = to_int(balance) - to_int(user_dollar_amount)
+    new_user_balance = parse_number(balance) - parse_number(user_dollar_amount)
 
     push(socket, "update_balance", %{"balance" => new_user_balance})
     {:noreply, assign(socket, user_balance: new_user_balance)}
@@ -143,12 +143,6 @@ defmodule TrackWeb.RoomChannel do
     })
 
     {:noreply, socket}
-  end
-
-  defp to_int(value) when is_number(value), do: value
-
-  defp to_int(value) when is_binary(value) do
-    String.to_integer(value)
   end
 
   defp get_username(socket) do
