@@ -268,6 +268,11 @@ function handleOrderLog(payload) {
     return;
   }
 
+  const emptyOrderLog = document.querySelector("#empty-order-log");
+  if (emptyOrderLog) {
+    emptyOrderLog.remove()
+  }
+
   // Create new order entry
   const orderEntry = document.createElement("div");
   orderEntry.className = "mb-1 p-1 border-b border-base-200";

@@ -123,7 +123,7 @@ defmodule TrackWeb.PageLive do
             </h2>
             <div class="divider my-2"></div>
             <div id="order-log" class="h-80 overflow-y-auto space-y-2">
-              <div class="text-center text-base-content/50 mt-8">
+              <div id="empty-order-log" class="text-center text-base-content/50 mt-8">
                 <.icon name="hero-inbox" class="w-12 h-12 mx-auto mb-2 opacity-30" />
                 <p class="text-sm">No orders yet</p>
                 <p class="text-xs opacity-70">Your trading history will appear here</p>
