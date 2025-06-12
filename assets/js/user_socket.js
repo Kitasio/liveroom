@@ -192,10 +192,102 @@ function setupBalanceInputChangeTracking(channel) {
   console.log("Balance input change tracking setup complete.");
 }
 
+function setupBuyButtonTracking(channel) {
+  const buyBtn = document.querySelector("#buy-btn")
+  if (!buyBtn) {
+    console.error("Buy button element not found!");
+    return;
+  }
+
+  const priceInput = document.querySelector("#price-input")
+  if (!priceInput) {
+    console.error("Price input element not found!");
+    return;
+  }
+
+  const balance = document.querySelector("#balance")
+  if (!balance) {
+    console.error("Balance element not found!");
+    return;
+  }
+
+  buyBtn.addEventListener("click", (e) => {
+    channel.push("buy_order", {
+      amount: priceInput.value,
+      balance: balance.innerText,
+    })
+  });
+
+  console.log("Buy button tracking setup complete.");
+}
+
+function setupSellButtonTracking(channel) {
+  const sellBtn = document.querySelector("#sell-btn")
+  if (!sellBtn) {
+    console.error("Sell button element not found!");
+    return;
+  }
+
+  const priceInput = document.querySelector("#price-input")
+  if (!priceInput) {
+    console.error("Price input element not found!");
+    return;
+  }
+
+  const balance = document.querySelector("#balance")
+  if (!balance) {
+    console.error("Balance element not found!");
+    return;
+  }
+
+  sellBtn.addEventListener("click", (e) => {
+    channel.push("sell_order", {
+      amount: priceInput.value,
+      balance: balance.innerText,
+    })
+  });
+
+  console.log("Sell button tracking setup complete.");
+}
+
+function handleOrderLog(payload) {
+  const { timestamp, action, amount, username } = payload;
+  console.log(`Order log: ${action} ${amount} by ${username} at ${timestamp}`);
+
+  const orderLog = document.querySelector("#order-log");
+  if (!orderLog) {
+    console.error("Order log element not found!");
+    return;
+  }
+
+  // Create new order entry
+  const orderEntry = document.createElement("div");
+  orderEntry.className = "mb-1 p-1 border-b border-base-200";
+  
+  const timeStr = new Date(timestamp).toLocaleTimeString();
+  const actionClass = action === "BUY" ? "text-green-600" : "text-red-600";
+  
+  orderEntry.innerHTML = `
+    <span class="text-xs text-gray-500">${timeStr}</span>
+    <span class="${actionClass} font-semibold">${action}</span>
+    <span>${amount} BTC</span>
+    <span class="text-xs">by ${username}</span>
+  `;
+
+  // Add to top of log
+  orderLog.insertBefore(orderEntry, orderLog.firstChild);
+  
+  // Keep only last 50 entries
+  while (orderLog.children.length > 50) {
+    orderLog.removeChild(orderLog.lastChild);
+  }
+}
+
 // Handle events
 channel.on("mouse_move", handleMouseMove);
 channel.on("price_input_change", handlePriceInputChange);
 channel.on("balance_input_change", handleBalanceInputChange);
+channel.on("order_log", handleOrderLog);
 
 channel.join()
   .receive("ok", resp => {
@@ -203,6 +295,8 @@ channel.join()
     setupMouseMoveTracking(channel); // Setup tracking after successful join
     setupPriceInputChangeTracking(channel); // Setup price input change tracking
     setupBalanceInputChangeTracking(channel);
+    setupBuyButtonTracking(channel);
+    setupSellButtonTracking(channel);
   })
   .receive("error", resp => { console.log("Unable to join", resp) })
 

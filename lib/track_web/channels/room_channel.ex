@@ -2,7 +2,7 @@ defmodule TrackWeb.RoomChannel do
   use Phoenix.Channel
 
   def join("room:lobby", _message, socket) do
-    {:ok, assign(socket, user_balance: 0)}
+    {:ok, assign(socket, user_balance: 0, username: get_username(socket))}
   end
 
   def join("room:" <> _private_room_id, _params, _socket) do
@@ -33,7 +33,37 @@ defmodule TrackWeb.RoomChannel do
     {:noreply, assign(socket, user_balance: balance)}
   end
 
-  intercept ["price_input_change"]
+  def handle_in("buy_order", %{"amount" => amount, "balance" => balance}, socket) do
+    username = socket.assigns[:username]
+    timestamp = DateTime.utc_now() |> DateTime.to_iso8601()
+    
+    broadcast!(socket, "order_log", %{
+      "timestamp" => timestamp,
+      "action" => "BUY",
+      "amount" => amount,
+      "username" => username
+    })
+    
+    broadcast!(socket, "buy_order", %{"amount" => amount, "balance" => balance})
+    {:noreply, socket}
+  end
+
+  def handle_in("sell_order", %{"amount" => amount, "balance" => balance}, socket) do
+    username = socket.assigns[:username]
+    timestamp = DateTime.utc_now() |> DateTime.to_iso8601()
+    
+    broadcast!(socket, "order_log", %{
+      "timestamp" => timestamp,
+      "action" => "SELL",
+      "amount" => amount,
+      "username" => username
+    })
+    
+    broadcast!(socket, "sell_order", %{"amount" => amount, "balance" => balance})
+    {:noreply, socket}
+  end
+
+  intercept ["price_input_change", "buy_order", "sell_order"]
 
   def handle_out("price_input_change", %{"value" => value, "balance" => balance}, socket) do
     user_balance = socket.assigns[:user_balance]
@@ -45,6 +75,58 @@ defmodule TrackWeb.RoomChannel do
     push(socket, "price_input_change", %{"value" => user_value, "balance" => balance})
     {:noreply, socket}
   end
+
+  def handle_out("buy_order", %{"amount" => amount, "balance" => balance}, socket) do
+    user_balance = socket.assigns[:user_balance]
+    
+    # Calculate user's proportional buy amount based on their balance
+    user_amount = calculate_proportional_amount(user_balance, balance, amount)
+    
+    push(socket, "price_input_change", %{"value" => user_amount, "balance" => balance})
+    {:noreply, socket}
+  end
+
+  def handle_out("sell_order", %{"amount" => amount, "balance" => balance}, socket) do
+    user_balance = socket.assigns[:user_balance]
+    
+    # Calculate user's proportional sell amount based on their balance
+    user_amount = calculate_proportional_amount(user_balance, balance, amount)
+    
+    push(socket, "price_input_change", %{"value" => user_amount, "balance" => balance})
+    {:noreply, socket}
+  end
+
+  defp get_username(socket) do
+    case socket.assigns do
+      %{current_user: username} when is_binary(username) -> 
+        username |> String.split("_") |> Enum.join(" ")
+      _ -> 
+        "Anonymous"
+    end
+  end
+
+  defp calculate_proportional_amount(user_balance, initiator_balance, amount) do
+    case {parse_number(user_balance), parse_number(initiator_balance), parse_number(amount)} do
+      {user_bal, init_bal, amt} when user_bal > 0 and init_bal > 0 and amt > 0 ->
+        user_bal / init_bal * amt
+      _ ->
+        0
+    end
+  end
+
+  defp parse_number(value) when is_binary(value) do
+    case Float.parse(value) do
+      {num, _} -> num
+      :error -> 
+        case Integer.parse(value) do
+          {num, _} -> num
+          :error -> 0
+        end
+    end
+  end
+
+  defp parse_number(value) when is_number(value), do: value
+  defp parse_number(_), do: 0
 
   defp random_color(num) do
     class_list = [
