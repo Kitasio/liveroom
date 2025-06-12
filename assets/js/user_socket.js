@@ -87,12 +87,12 @@ function handleMouseMove(payload) {
     // Create a new dot if it doesn't exist
     dot = document.createElement("div");
     dot.id = `dot-${id}`;
-    dot.className = `absolute ${color} rounded-full w-4 h-4 pointer-events-none transition-all duration-100`;
+    dot.className = `absolute z-50 ${color} rounded-full w-4 h-4 pointer-events-none transition-all duration-100`;
     dotsContainer.appendChild(dot);
   } else {
     // If it exists, update the color class (in case it changes)
     // This is a simple way to update color, more robust would be to check if class needs changing
-    dot.className = `absolute ${color} rounded-full w-4 h-4 pointer-events-none transition-all duration-100`;
+    dot.className = `absolute z-50 ${color} rounded-full w-4 h-4 pointer-events-none transition-all duration-100`;
   }
 
   // Update the position
@@ -214,7 +214,7 @@ function setupBuyButtonTracking(channel) {
   buyBtn.addEventListener("click", (e) => {
     const livePriceEl = document.querySelector("#live-price");
     const currentPrice = livePriceEl ? livePriceEl.innerText.replace('$', '').replace(',', '') : "0";
-    
+
     channel.push("buy_order", {
       amount: priceInput.value,
       balance: balance.innerText,
@@ -247,7 +247,7 @@ function setupSellButtonTracking(channel) {
   sellBtn.addEventListener("click", (e) => {
     const livePriceEl = document.querySelector("#live-price");
     const currentPrice = livePriceEl ? livePriceEl.innerText.replace('$', '').replace(',', '') : "0";
-    
+
     channel.push("sell_order", {
       amount: priceInput.value,
       balance: balance.innerText,
@@ -271,10 +271,10 @@ function handleOrderLog(payload) {
   // Create new order entry
   const orderEntry = document.createElement("div");
   orderEntry.className = "mb-1 p-1 border-b border-base-200";
-  
+
   const timeStr = new Date(timestamp).toLocaleTimeString();
   const actionClass = action === "BUY" ? "text-green-600" : "text-red-600";
-  
+
   orderEntry.innerHTML = `
     <span class="text-xs text-gray-500">${timeStr}</span>
     <span class="${actionClass} font-semibold">${action}</span>
@@ -285,7 +285,7 @@ function handleOrderLog(payload) {
 
   // Add to top of log
   orderLog.insertBefore(orderEntry, orderLog.firstChild);
-  
+
   // Keep only last 50 entries
   while (orderLog.children.length > 50) {
     orderLog.removeChild(orderLog.lastChild);

@@ -2,7 +2,7 @@ defmodule TrackWeb.RoomChannel do
   use Phoenix.Channel
 
   def join("room:lobby", _message, socket) do
-    {:ok, assign(socket, user_balance: 0, username: get_username(socket))}
+    {:ok, assign(socket, user_balance: 100, username: get_username(socket))}
   end
 
   def join("room:" <> _private_room_id, _params, _socket) do
@@ -108,12 +108,22 @@ defmodule TrackWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  def handle_out("order_log", %{"timestamp" => timestamp, "action" => action, "amount" => amount, "username" => username, "btc_price" => btc_price} = payload, socket) do
+  def handle_out(
+        "order_log",
+        %{
+          "timestamp" => timestamp,
+          "action" => action,
+          "amount" => amount,
+          "username" => username,
+          "btc_price" => btc_price
+        } = payload,
+        socket
+      ) do
     user_balance = socket.assigns[:user_balance]
-    
+
     # Get the initiator's balance from the original broadcast
     initiator_balance = Map.get(payload, "initiator_balance", amount)
-    
+
     # Calculate user's proportional amount based on their balance
     user_amount = calculate_proportional_amount(user_balance, initiator_balance, amount)
 
@@ -124,6 +134,7 @@ defmodule TrackWeb.RoomChannel do
       "username" => username,
       "btc_price" => btc_price
     })
+
     {:noreply, socket}
   end
 
