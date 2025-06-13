@@ -72,7 +72,7 @@ channel.join()
     setupBalanceInputChangeTracking(channel);
     setupBuyButtonTracking(channel);
     setupSellButtonTracking(channel);
-    setupOrderLogTracking(channel);
+    // setupOrderLogTracking(channel);
   })
   .receive("error", resp => { console.log("Unable to join", resp) })
 

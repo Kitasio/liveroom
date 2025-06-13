@@ -3,7 +3,22 @@ defmodule TrackWeb.PageLive do
 
   def mount(_params, %{"anon_user" => username}, socket) do
     username = username |> String.split("_") |> Enum.join(" ")
-    {:ok, assign(socket, username: username)}
+
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Track.PubSub, "order_log:#{username}")
+    end
+
+    {:ok,
+     socket
+     |> assign(:username, username)
+     |> stream(:order_log, [])}
+  end
+
+  def handle_info({:order_log, entry}, socket) do
+    IO.inspect(entry, label: "ENTRY")
+    socket = stream_insert(socket, :order_log, entry)
+    IO.inspect(socket, label: "SOCKET")
+    {:noreply, socket}
   end
 
   def render(assigns) do
@@ -122,8 +137,20 @@ defmodule TrackWeb.PageLive do
               <.icon name="hero-clipboard-document-list" class="w-5 h-5" /> Order History
             </h2>
             <div class="divider my-2"></div>
-            <div id="order-log" class="h-80 overflow-y-auto space-y-2">
-              <div id="empty-order-log" class="text-center text-base-content/50 mt-8">
+            <div phx-update="stream" id="order-log" class="h-80 overflow-y-auto space-y-2">
+              <div :for={{dom_id, entry} <- @streams.order_log} id={dom_id}>
+                <span class="text-xs text-gray-500">{format_time(entry.timestamp)}</span>
+                <span class={action_class(entry.action) <> " font-semibold"}>
+                  {entry.action}
+                </span>
+                <span>${entry.amount}</span>
+                <span class="text-xs">@ ${entry.btc_price}</span>
+                <span class="text-xs">by {entry.username}</span>
+              </div>
+              <div
+                id="empty-order-log"
+                class="only:block hidden text-center text-base-content/50 mt-8"
+              >
                 <.icon name="hero-inbox" class="w-12 h-12 mx-auto mb-2 opacity-30" />
                 <p class="text-sm">No orders yet</p>
                 <p class="text-xs opacity-70">Your trading history will appear here</p>
@@ -167,4 +194,12 @@ defmodule TrackWeb.PageLive do
     </main>
     """
   end
+
+  defp format_time(ts) do
+    ts |> DateTime.from_iso8601() |> elem(1) |> Calendar.strftime("%H:%M:%S")
+  end
+
+  defp action_class("BUY"), do: "text-green-600"
+  defp action_class("SELL"), do: "text-red-600"
+  defp action_class(_), do: "text-gray-600"
 end

@@ -134,13 +134,27 @@ defmodule TrackWeb.RoomChannel do
     # Calculate user's proportional amount based on their balance
     user_amount = calculate_proportional_amount(user_balance, initiator_balance, amount)
 
-    push(socket, "order_log", %{
-      "timestamp" => timestamp,
-      "action" => action,
-      "amount" => user_amount,
-      "username" => username,
-      "btc_price" => btc_price
-    })
+    # push(socket, "order_log", %{
+    #   "timestamp" => timestamp,
+    #   "action" => action,
+    #   "amount" => user_amount,
+    #   "username" => username,
+    #   "btc_price" => btc_price
+    # })
+
+    Phoenix.PubSub.broadcast(
+      Track.PubSub,
+      "order_log:#{socket.assigns[:username]}",
+      {:order_log,
+       %{
+         id: System.unique_integer([:positive]),
+         timestamp: timestamp,
+         action: action,
+         amount: user_amount,
+         username: username,
+         btc_price: btc_price
+       }}
+    )
 
     {:noreply, socket}
   end
