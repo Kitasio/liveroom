@@ -11,14 +11,13 @@ defmodule TrackWeb.PageLive do
     {:ok,
      socket
      |> assign(:username, username)
-     |> stream(:order_log, [])}
+     |> assign(:order_log, [])}
   end
 
   def handle_info({:order_log, entry}, socket) do
-    IO.inspect(entry, label: "ENTRY")
-    socket = stream_insert(socket, :order_log, entry)
-    IO.inspect(socket, label: "SOCKET")
-    {:noreply, socket}
+    order_log = [entry | socket.assigns[:order_log]]
+    IO.inspect(order_log, label: "ORDER LOG")
+    {:noreply, socket |> assign(:order_log, order_log)}
   end
 
   def render(assigns) do
@@ -137,8 +136,8 @@ defmodule TrackWeb.PageLive do
               <.icon name="hero-clipboard-document-list" class="w-5 h-5" /> Order History
             </h2>
             <div class="divider my-2"></div>
-            <div phx-update="stream" id="order-log" class="h-80 overflow-y-auto space-y-2">
-              <div :for={{dom_id, entry} <- @streams.order_log} id={dom_id}>
+            <div id="order-log" class="h-80 overflow-y-auto space-y-2">
+              <div :for={entry <- @order_log} id={"entry-#{entry.id}"}>
                 <span class="text-xs text-gray-500">{format_time(entry.timestamp)}</span>
                 <span class={action_class(entry.action) <> " font-semibold"}>
                   {entry.action}

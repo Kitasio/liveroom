@@ -35,6 +35,7 @@ defmodule TrackWeb.Router do
     pipe_through :browser
 
     live "/", PageLive
+    live "/price", PriceLive
   end
 
   # Other scopes may use custom stacks.
