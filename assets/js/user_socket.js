@@ -68,8 +68,8 @@ channel.join()
   .receive("ok", resp => {
     console.log("Joined successfully", resp);
     setupMouseMoveTracking(channel); // Setup tracking after successful join
-    setupPriceInputChangeTracking(channel); // Setup price input change tracking
-    setupBalanceInputChangeTracking(channel);
+    // setupPriceInputChangeTracking(channel); // Setup price input change tracking
+    // setupBalanceInputChangeTracking(channel);
     setupBuyButtonTracking(channel);
     setupSellButtonTracking(channel);
     // setupOrderLogTracking(channel);

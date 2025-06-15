@@ -77,10 +77,15 @@ function throttle(callback, limit) {
 Hooks.TrackMouse = {
   mounted() {
     const throttledMouseMove = throttle((e) => {
-      this.pushEvent("mouse_move", {
-        x: e.clientX,
-        y: e.clientY
-      })
+      // this.pushEvent("mouse_move", {
+      //   x: e.clientX,
+      //   y: e.clientY
+      // })
+      // Update the position
+      const dot = document.querySelector("#dot");
+      dot.style.left = `${e.clientX}px`;
+      dot.style.top = `${e.clientY}px`;
+      dot.style.transform = "translate(-50%, -50%)";
     }, 24)
 
     this.el.addEventListener("mousemove", throttledMouseMove)

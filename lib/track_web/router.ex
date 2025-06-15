@@ -36,6 +36,8 @@ defmodule TrackWeb.Router do
 
     live "/", PageLive
     live "/price", PriceLive
+    get "/rooms", RoomController, :index
+    live "/rooms/:room_id", RoomLive
   end
 
   # Other scopes may use custom stacks.
