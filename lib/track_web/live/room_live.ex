@@ -22,11 +22,46 @@ defmodule TrackWeb.RoomLive do
      |> assign(:user_balance, 100)}
   end
 
-  def handle_event("user_balance_updated", %{"user_balance" => user_balance}, socket) do
+  def handle_event("buy", _params, socket) do
+    user_balance = parse_number(socket.assigns[:user_balance])
+    order_price = parse_number(socket.assigns[:order_price])
+    new_balance = user_balance + order_price
+
     topic = "room:#{socket.assigns[:room_id]}"
 
-    PubSub.broadcast!(
+    PubSub.broadcast_from!(
       Track.PubSub,
+      self(),
+      topic,
+      {:order_executed, :buy}
+    )
+
+    {:noreply, socket |> assign(:user_balance, new_balance)}
+  end
+
+  def handle_event("sell", _params, socket) do
+    user_balance = parse_number(socket.assigns[:user_balance])
+    order_price = parse_number(socket.assigns[:order_price])
+    new_balance = user_balance - order_price
+
+    topic = "room:#{socket.assigns[:room_id]}"
+
+    PubSub.broadcast_from!(
+      Track.PubSub,
+      self(),
+      topic,
+      {:order_executed, :sell}
+    )
+
+    {:noreply, socket |> assign(:user_balance, new_balance)}
+  end
+
+  def handle_event("update_user_balance", %{"user_balance" => user_balance}, socket) do
+    topic = "room:#{socket.assigns[:room_id]}"
+
+    PubSub.broadcast_from!(
+      Track.PubSub,
+      self(),
       topic,
       {:price_or_balance_updated, socket.assigns[:order_price], user_balance}
     )
@@ -34,11 +69,12 @@ defmodule TrackWeb.RoomLive do
     {:noreply, socket |> assign(:user_balance, user_balance)}
   end
 
-  def handle_event("order_price_updated", %{"price" => price}, socket) do
+  def handle_event("update_order_price", %{"price" => price}, socket) do
     topic = "room:#{socket.assigns[:room_id]}"
 
-    PubSub.broadcast!(
+    PubSub.broadcast_from!(
       Track.PubSub,
+      self(),
       topic,
       {:price_or_balance_updated, price, socket.assigns[:user_balance]}
     )
@@ -46,11 +82,26 @@ defmodule TrackWeb.RoomLive do
     {:noreply, socket |> assign(:order_price, price)}
   end
 
+  def handle_info({:order_executed, :buy}, socket) do
+    new_balance = socket.assigns[:user_balance] + socket.assigns[:order_price]
+    {:noreply, socket |> assign(:user_balance, new_balance)}
+  end
+
+  def handle_info({:order_executed, :sell}, socket) do
+    new_balance = socket.assigns[:user_balance] - socket.assigns[:order_price]
+    {:noreply, socket |> assign(:user_balance, new_balance)}
+  end
+
   def handle_info({:price_or_balance_updated, price, initiator_balance}, socket) do
     user_balance = socket.assigns[:user_balance]
+    IO.inspect(user_balance, label: "CURRENT USER BALANCE")
+    IO.inspect(initiator_balance, label: "INITIATOR USER BALANCE")
+    IO.inspect(price, label: "INITIATOR ORDER PRICE")
 
     propotional_price =
       calculate_proportional_amount(user_balance, initiator_balance, price)
+
+    IO.inspect(propotional_price, label: "NEW ORDER PRICE")
 
     {:noreply, assign(socket, order_price: propotional_price)}
   end
@@ -78,7 +129,7 @@ defmodule TrackWeb.RoomLive do
     case {parse_number(user_user_balance), parse_number(initiator_user_balance),
           parse_number(amount)} do
       {user_bal, init_bal, amt} when user_bal > 0 and init_bal > 0 and amt > 0 ->
-        user_bal / init_bal * amt
+        Float.round(user_bal / init_bal * amt, 3)
 
       _ ->
         0

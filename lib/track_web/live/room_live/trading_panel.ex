@@ -28,7 +28,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
                 type="number"
                 name="user_balance"
                 value={@user_balance}
-                phx-change="user_balance_updated"
+                phx-change="update_user_balance"
               />
               <div class="btn btn-outline join-item">USD</div>
             </form>
@@ -56,7 +56,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
             type="number"
             class="input input-bordered w-full"
             placeholder="Enter amount to trade"
-            phx-change="order_price_updated"
+            phx-change="update_order_price"
           />
         </form>
       </div>
@@ -64,10 +64,10 @@ defmodule TrackWeb.RoomLive.TradingPanel do
     <!-- Trading Buttons -->
       <div class="card-actions justify-center mt-6">
         <div class="join w-full">
-          <button id="buy-btn" class="btn btn-success join-item flex-1">
+          <button phx-click="buy" id="buy-btn" class="btn btn-success join-item flex-1">
             <.icon name="hero-arrow-trending-up" class="w-4 h-4" /> Buy BTC
           </button>
-          <button id="sell-btn" class="btn btn-error join-item flex-1">
+          <button phx-click="sell" id="sell-btn" class="btn btn-error join-item flex-1">
             <.icon name="hero-arrow-trending-down" class="w-4 h-4" /> Sell BTC
           </button>
         </div>

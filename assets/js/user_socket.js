@@ -70,8 +70,8 @@ channel.join()
     setupMouseMoveTracking(channel); // Setup tracking after successful join
     // setupPriceInputChangeTracking(channel); // Setup price input change tracking
     // setupBalanceInputChangeTracking(channel);
-    setupBuyButtonTracking(channel);
-    setupSellButtonTracking(channel);
+    // setupBuyButtonTracking(channel);
+    // setupSellButtonTracking(channel);
     // setupOrderLogTracking(channel);
   })
   .receive("error", resp => { console.log("Unable to join", resp) })
