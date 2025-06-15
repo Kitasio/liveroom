@@ -2,8 +2,8 @@ defmodule TrackWeb.RoomLive.TradingPanel do
   use Phoenix.Component
   use TrackWeb, :live_view
 
-  attr :balance, :integer, required: true
-  attr :price_input_value, :integer, required: true
+  attr :user_balance, :integer, required: true
+  attr :order_price, :integer, required: true
 
   def trading_panel(assigns) do
     ~H"""
@@ -15,26 +15,28 @@ defmodule TrackWeb.RoomLive.TradingPanel do
             <.icon name="hero-currency-dollar" class="w-5 h-5" /> Trading Panel
           </h2>
           
-    <!-- Balance Section -->
+    <!-- User Balance Section -->
           <div class="form-control w-full">
             <label class="label">
               <span class="label-text font-semibold">Account Balance</span>
             </label>
             <form class="join">
               <input
-                id="balance-input"
-                placeholder="Enter balance"
+                id="user-balance-input"
+                placeholder="Enter Balance"
                 class="input input-bordered join-item flex-1"
                 type="number"
-                name="balance"
-                value={@balance}
-                phx-change="balance-change"
+                name="user_balance"
+                value={@user_balance}
+                phx-change="user_balance_updated"
               />
               <div class="btn btn-outline join-item">USD</div>
             </form>
             <div class="mt-2 p-3 bg-base-200 rounded-lg">
               <span class="text-sm opacity-70">Current Balance:</span>
-              <span class="font-bold text-lg ml-2">$<span id="balance">{@balance}</span></span>
+              <span class="font-bold text-lg ml-2">
+                $<span id="user_balance">{@user_balance}</span>
+              </span>
             </div>
           </div>
         </div>
@@ -50,11 +52,11 @@ defmodule TrackWeb.RoomLive.TradingPanel do
             id="price-input"
             min="1"
             name="price"
-            value={@price_input_value}
+            value={@order_price}
             type="number"
             class="input input-bordered w-full"
             placeholder="Enter amount to trade"
-            phx-change="price-input-change"
+            phx-change="order_price_updated"
           />
         </form>
       </div>

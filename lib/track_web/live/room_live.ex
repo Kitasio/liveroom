@@ -16,30 +16,41 @@ defmodule TrackWeb.RoomLive do
      socket
      |> assign(:username, username)
      |> assign(:room_id, room_id)
-     |> assign(:price_input_value, 1)
-     |> assign(:balance, 100)}
+     |> assign(:order_price, 1)
+     |> assign(:user_balance, 100)}
   end
 
-  def handle_event("balance-change", %{"balance" => balance}, socket) do
-    {:noreply, socket |> assign(:balance, balance)}
-  end
-
-  def handle_event("price-input-change", %{"price" => price}, socket) do
+  def handle_event("user_balance_updated", %{"user_balance" => user_balance}, socket) do
     topic = "room:#{socket.assigns[:room_id]}"
 
     PubSub.broadcast!(
       Track.PubSub,
       topic,
-      {:price_input_updated, price, socket.assigns[:balance]}
+      {:price_or_balance_updated, socket.assigns[:order_price], user_balance}
     )
 
-    {:noreply, socket |> assign(:price_input_value, price)}
+    {:noreply, socket |> assign(:user_balance, user_balance)}
   end
 
-  def handle_info({:price_input_updated, price, initiator_balance}, socket) do
-    user_balance = socket.assigns[:balance]
-    propotional_price = calculate_proportional_amount(user_balance, initiator_balance, price)
-    {:noreply, assign(socket, price_input_value: propotional_price)}
+  def handle_event("order_price_updated", %{"price" => price}, socket) do
+    topic = "room:#{socket.assigns[:room_id]}"
+
+    PubSub.broadcast!(
+      Track.PubSub,
+      topic,
+      {:price_or_balance_updated, price, socket.assigns[:user_balance]}
+    )
+
+    {:noreply, socket |> assign(:order_price, price)}
+  end
+
+  def handle_info({:price_or_balance_updated, price, initiator_balance}, socket) do
+    user_balance = socket.assigns[:user_balance]
+
+    propotional_price =
+      calculate_proportional_amount(user_balance, initiator_balance, price)
+
+    {:noreply, assign(socket, order_price: propotional_price)}
   end
 
   def render(assigns) do
@@ -52,14 +63,15 @@ defmodule TrackWeb.RoomLive do
       
     <!-- Main Content Grid -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <.trading_panel balance={@balance} price_input_value={@price_input_value} />
+        <.trading_panel user_balance={@user_balance} order_price={@order_price} />
       </div>
     </div>
     """
   end
 
-  defp calculate_proportional_amount(user_balance, initiator_balance, amount) do
-    case {parse_number(user_balance), parse_number(initiator_balance), parse_number(amount)} do
+  defp calculate_proportional_amount(user_user_balance, initiator_user_balance, amount) do
+    case {parse_number(user_user_balance), parse_number(initiator_user_balance),
+          parse_number(amount)} do
       {user_bal, init_bal, amt} when user_bal > 0 and init_bal > 0 and amt > 0 ->
         user_bal / init_bal * amt
 
