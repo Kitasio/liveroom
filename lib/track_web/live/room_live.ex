@@ -2,6 +2,8 @@ defmodule TrackWeb.RoomLive do
   use TrackWeb, :live_view
   import TrackWeb.RoomLive.Navbar
   import TrackWeb.RoomLive.TradingPanel
+  import TrackWeb.RoomLive.Chart
+  import TrackWeb.RoomLive.OrderLog
   alias Phoenix.PubSub
 
   def mount(%{"room_id" => room_id}, %{"anon_user" => username}, socket) do
@@ -64,11 +66,14 @@ defmodule TrackWeb.RoomLive do
     <!-- Main Content Grid -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <.trading_panel user_balance={@user_balance} order_price={@order_price} />
+        <.chart />
+        <.order_log />
       </div>
     </div>
     """
   end
 
+  # Helper functions
   defp calculate_proportional_amount(user_user_balance, initiator_user_balance, amount) do
     case {parse_number(user_user_balance), parse_number(initiator_user_balance),
           parse_number(amount)} do
