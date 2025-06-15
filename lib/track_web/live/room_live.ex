@@ -1,4 +1,6 @@
 defmodule TrackWeb.RoomLive do
+  alias Track.TradePnl.Trade
+  alias Track.TradePnl
   use TrackWeb, :live_view
   import TrackWeb.RoomLive.Navbar
   import TrackWeb.RoomLive.TradingPanel
@@ -15,11 +17,15 @@ defmodule TrackWeb.RoomLive do
 
     username = username |> String.split("_") |> Enum.join(" ")
 
+    trade_state = %TradePnl.State{}
+
     {:ok,
      socket
      |> assign(:username, username)
      |> assign(:room_id, room_id)
-     |> assign(:btc_price, "0.00")
+     |> assign(:trade_state, trade_state)
+     |> assign(:unrealized_pnl, 0)
+     |> assign(:btc_price, 0.00)
      |> assign(:order_price, 1)
      |> assign(:user_balance, 100)}
   end
@@ -38,7 +44,19 @@ defmodule TrackWeb.RoomLive do
       {:order_executed, :buy}
     )
 
-    {:noreply, socket |> assign(:user_balance, new_balance)}
+    btc_price = parse_number(socket.assigns[:btc_price])
+
+    trade_state =
+      TradePnl.add_trade(socket.assigns[:trade_state], %Trade{
+        side: :buy,
+        amount_usd: order_price,
+        price: btc_price
+      })
+
+    {:noreply,
+     socket
+     |> assign(:user_balance, new_balance)
+     |> assign(:trade_state, trade_state)}
   end
 
   def handle_event("sell", _params, socket) do
@@ -55,7 +73,19 @@ defmodule TrackWeb.RoomLive do
       {:order_executed, :sell}
     )
 
-    {:noreply, socket |> assign(:user_balance, new_balance)}
+    btc_price = parse_number(socket.assigns[:btc_price])
+
+    trade_state =
+      TradePnl.add_trade(socket.assigns[:trade_state], %Trade{
+        side: :sell,
+        amount_usd: order_price,
+        price: btc_price
+      })
+
+    {:noreply,
+     socket
+     |> assign(:user_balance, new_balance)
+     |> assign(:trade_state, trade_state)}
   end
 
   def handle_event("update_user_balance", %{"user_balance" => user_balance}, socket) do
@@ -85,7 +115,12 @@ defmodule TrackWeb.RoomLive do
   end
 
   def handle_info({:btc_price_updated, price}, socket) do
-    {:noreply, assign(socket, btc_price: price)}
+    btc_price = parse_number(price) |> Float.round(2)
+
+    unrealized_pnl =
+      TradePnl.unrealized_pnl(socket.assigns[:trade_state], btc_price) |> Float.round(2)
+
+    {:noreply, assign(socket, btc_price: btc_price, unrealized_pnl: unrealized_pnl)}
   end
 
   def handle_info({:order_executed, :buy}, socket) do
@@ -100,14 +135,9 @@ defmodule TrackWeb.RoomLive do
 
   def handle_info({:price_or_balance_updated, price, initiator_balance}, socket) do
     user_balance = socket.assigns[:user_balance]
-    IO.inspect(user_balance, label: "CURRENT USER BALANCE")
-    IO.inspect(initiator_balance, label: "INITIATOR USER BALANCE")
-    IO.inspect(price, label: "INITIATOR ORDER PRICE")
 
     propotional_price =
       calculate_proportional_amount(user_balance, initiator_balance, price)
-
-    IO.inspect(propotional_price, label: "NEW ORDER PRICE")
 
     {:noreply, assign(socket, order_price: propotional_price)}
   end
@@ -118,7 +148,7 @@ defmodule TrackWeb.RoomLive do
       <div id="dots"></div>
       
     <!-- Header Section -->
-      <.navbar username={@username} btc_price={@btc_price} />
+      <.navbar username={@username} btc_price={@btc_price} unrealized_pnl={@unrealized_pnl} />
       
     <!-- Main Content Grid -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">

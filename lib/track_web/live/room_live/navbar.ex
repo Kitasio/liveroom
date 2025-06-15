@@ -4,6 +4,7 @@ defmodule TrackWeb.RoomLive.Navbar do
 
   attr :username, :string, required: true
   attr :btc_price, :string, required: true
+  attr :unrealized_pnl, :integer, required: true
 
   def navbar(assigns) do
     ~H"""
@@ -23,7 +24,8 @@ defmodule TrackWeb.RoomLive.Navbar do
           </div>
         </div>
       </div>
-      <div class="navbar-end">
+      <div class="navbar-end flex gap-5">
+        <p :if={@unrealized_pnl != 0}>PNL: {@unrealized_pnl}</p>
         <p class="capitalize font-medium">{@username}</p>
       </div>
     </div>
