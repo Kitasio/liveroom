@@ -9,6 +9,7 @@ defmodule TrackWeb.RoomLive do
   def mount(%{"room_id" => room_id}, %{"anon_user" => username}, socket) do
     if connected?(socket) do
       PubSub.subscribe(Track.PubSub, "room:#{room_id}")
+      PubSub.subscribe(Track.PubSub, "btc_price")
       # PubSub.subscribe(Track.PubSub, "user:#{username}")
     end
 
@@ -18,6 +19,7 @@ defmodule TrackWeb.RoomLive do
      socket
      |> assign(:username, username)
      |> assign(:room_id, room_id)
+     |> assign(:btc_price, "0.00")
      |> assign(:order_price, 1)
      |> assign(:user_balance, 100)}
   end
@@ -82,6 +84,10 @@ defmodule TrackWeb.RoomLive do
     {:noreply, socket |> assign(:order_price, price)}
   end
 
+  def handle_info({:btc_price_updated, price}, socket) do
+    {:noreply, assign(socket, btc_price: price)}
+  end
+
   def handle_info({:order_executed, :buy}, socket) do
     new_balance = socket.assigns[:user_balance] + socket.assigns[:order_price]
     {:noreply, socket |> assign(:user_balance, new_balance)}
@@ -112,7 +118,7 @@ defmodule TrackWeb.RoomLive do
       <div id="dots"></div>
       
     <!-- Header Section -->
-      <.navbar username={@username} />
+      <.navbar username={@username} btc_price={@btc_price} />
       
     <!-- Main Content Grid -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">

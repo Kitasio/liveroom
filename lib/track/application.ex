@@ -15,7 +15,8 @@ defmodule Track.Application do
       # Start a worker by calling: Track.Worker.start_link(arg)
       # {Track.Worker, arg},
       # Start to serve requests, typically the last entry
-      TrackWeb.Endpoint
+      TrackWeb.Endpoint,
+      {Track.LivePriceSocket, []}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

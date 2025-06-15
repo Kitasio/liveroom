@@ -3,6 +3,7 @@ defmodule TrackWeb.RoomLive.Navbar do
   use TrackWeb, :live_view
 
   attr :username, :string, required: true
+  attr :btc_price, :string, required: true
 
   def navbar(assigns) do
     ~H"""
@@ -16,8 +17,8 @@ defmodule TrackWeb.RoomLive.Navbar do
         <div class="stats shadow">
           <div class="stat">
             <div class="stat-title">Live BTC Price</div>
-            <div class="stat-value text-2xl text-success" id="live-price" phx-hook="LivePrice">
-              $0.00
+            <div class="stat-value text-2xl text-success" id="live-price">
+              {@btc_price}
             </div>
           </div>
         </div>

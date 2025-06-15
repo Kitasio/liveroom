@@ -51,18 +51,6 @@ Hooks.CandleChart = {
   }
 }
 
-Hooks.LivePrice = {
-  mounted() {
-    const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      const price = data.c; // last price
-      this.el.textContent = `$${price}`;
-    };
-  }
-}
-
 function throttle(callback, limit) {
   let lastCall = 0
   return function(...args) {
