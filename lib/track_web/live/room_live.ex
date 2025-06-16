@@ -8,20 +8,21 @@ defmodule TrackWeb.RoomLive do
   import TrackWeb.RoomLive.OrderLog
   alias Phoenix.PubSub
 
-  def mount(%{"room_id" => room_id}, %{"anon_user" => username}, socket) do
+  def mount(%{"room_id" => room_id}, _session, socket) do
     if connected?(socket) do
       PubSub.subscribe(Track.PubSub, "room:#{room_id}")
       PubSub.subscribe(Track.PubSub, "btc_price")
       # PubSub.subscribe(Track.PubSub, "user:#{username}")
     end
 
-    username = username |> String.split("_") |> Enum.join(" ")
+    user_id = socket.assigns[:current_scope].user.id
+    is_owner = user_id == parse_number(room_id)
 
     trade_state = %TradePnl.State{}
 
     {:ok,
      socket
-     |> assign(:username, username)
+     |> assign(:is_owner, is_owner)
      |> assign(:room_id, room_id)
      |> assign(:trade_state, trade_state)
      |> assign(:unrealized_pnl, 0)
@@ -148,7 +149,7 @@ defmodule TrackWeb.RoomLive do
       <div id="dots"></div>
       
     <!-- Header Section -->
-      <.navbar username={@username} btc_price={@btc_price} unrealized_pnl={@unrealized_pnl} />
+      <.navbar is_owner={@is_owner} btc_price={@btc_price} unrealized_pnl={@unrealized_pnl} />
       
     <!-- Main Content Grid -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">

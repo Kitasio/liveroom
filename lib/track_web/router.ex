@@ -39,8 +39,6 @@ defmodule TrackWeb.Router do
 
     live "/", PageLive
     live "/price", PriceLive
-    get "/rooms", RoomController, :index
-    live "/rooms/:room_id", RoomLive
   end
 
   # Other scopes may use custom stacks.
@@ -69,11 +67,14 @@ defmodule TrackWeb.Router do
 
   scope "/", TrackWeb do
     pipe_through [:browser, :require_authenticated_user]
+    get "/rooms", RoomController, :index
 
     live_session :require_authenticated_user,
       on_mount: [{TrackWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
+
+      live "/rooms/:room_id", RoomLive
     end
 
     post "/users/update-password", UserSessionController, :update_password
