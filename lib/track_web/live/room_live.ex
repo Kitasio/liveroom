@@ -153,7 +153,7 @@ defmodule TrackWeb.RoomLive do
       
     <!-- Main Content Grid -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <.trading_panel user_balance={@user_balance} order_price={@order_price} />
+        <.trading_panel is_owner={@is_owner} user_balance={@user_balance} order_price={@order_price} />
         <.chart />
         <.order_log />
       </div>

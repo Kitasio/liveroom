@@ -2,6 +2,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
   use Phoenix.Component
   use TrackWeb, :live_view
 
+  attr :is_owner, :boolean, required: true
   attr :user_balance, :integer, required: true
   attr :order_price, :integer, required: true
 
@@ -57,6 +58,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
             class="input input-bordered w-full"
             placeholder="Enter amount to trade"
             phx-change="update_order_price"
+            disabled={!@is_owner}
           />
         </form>
       </div>
