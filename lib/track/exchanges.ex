@@ -41,7 +41,9 @@ defmodule Track.Exchanges do
 
   """
   def list_bitmex_settings(%Scope{} = scope) do
-    Repo.all(from bitmex_setting in BitmexSetting, where: bitmex_setting.user_id == ^scope.user.id)
+    Repo.all(
+      from bitmex_setting in BitmexSetting, where: bitmex_setting.user_id == ^scope.user.id
+    )
   end
 
   @doc """
@@ -60,6 +62,28 @@ defmodule Track.Exchanges do
   """
   def get_bitmex_setting!(%Scope{} = scope, id) do
     Repo.get_by!(BitmexSetting, id: id, user_id: scope.user.id)
+  end
+
+  @doc """
+  Gets the latest bitmex_setting for the given user.
+
+  Raises `Ecto.NoResultsError` if the Bitmex setting does not exist.
+
+  ## Examples
+
+      iex> get_latest_bitmex_setting!(scope)
+      %BitmexSetting{}
+
+      iex> get_latest_bitmex_setting!(scope)
+      ** (Ecto.NoResultsError)
+  """
+  def get_latest_bitmex_setting!(%Scope{} = scope) do
+    Repo.one!(
+      from bitmex_setting in BitmexSetting,
+        where: bitmex_setting.user_id == ^scope.user.id,
+        order_by: [desc: bitmex_setting.inserted_at],
+        limit: 1
+    )
   end
 
   @doc """
