@@ -3,7 +3,6 @@ defmodule TrackWeb.RoomLive do
   use TrackWeb, :live_view
   import TrackWeb.RoomLive.Navbar
   import TrackWeb.RoomLive.TradingPanel
-  import TrackWeb.RoomLive.Chart
   import TrackWeb.RoomLive.OrderLog
   alias Phoenix.PubSub
 
@@ -15,18 +14,19 @@ defmodule TrackWeb.RoomLive do
       <.navbar
         is_owner={@is_owner}
         btc_price={@btc_price}
-        unrealised_pnl={@trade_state.unrealised_pnl}
-        position_open={@trade_state.position_open}
+        unrealised_pnl={@trade_state.position.unrealised_pnl}
+        position_open={@trade_state.position.is_open}
       />
       <!-- Main Content Grid -->
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <.trading_panel
           is_owner={@is_owner}
-          user_balance={@trade_state.balance_usd}
+          user_balance={@trade_state.balance.balance_usd}
           order_price={@order_price}
         />
-        <.chart />
-        <.order_log />
+        <div class="lg:col-span-2">
+          <.order_log />
+        </div>
       </div>
     </div>
     """
@@ -127,7 +127,7 @@ defmodule TrackWeb.RoomLive do
     new_trade_state =
       UserTradeState.update_balance(
         socket.assigns[:trade_state],
-        {:sats, socket.assigns[:trade_state].balance_sats},
+        {:sats, socket.assigns[:trade_state].balance.balance_sats},
         btc_price
       )
 

@@ -20,6 +20,11 @@ defmodule Track.BitmexClient do
 
   @doc """
   Places a market order for a given symbol, side, and quantity.
+
+  ## Examples
+
+      iex> Track.BitmexClient.place_market_order(scope, "XBTUSD", "Buy", 100)
+      {:ok, order_details}
   """
   def place_market_order(%Scope{} = scope, symbol, side, quantity) when side in ["Buy", "Sell"] do
     settings = Exchanges.get_latest_bitmex_setting!(scope)

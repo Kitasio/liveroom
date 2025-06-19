@@ -15,24 +15,8 @@ defmodule TrackWeb.RoomLive.TradingPanel do
           <h2 class="card-title text-primary">
             <.icon name="hero-currency-dollar" class="w-5 h-5" /> Trading Panel
           </h2>
-          
-    <!-- User Balance Section -->
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-semibold">Account Balance</span>
-            </label>
-            <form class="join">
-              <input
-                id="user-balance-input"
-                placeholder="Enter Balance"
-                class="input input-bordered join-item flex-1"
-                type="number"
-                name="user_balance"
-                value={@user_balance}
-                phx-change="update_user_balance"
-              />
-              <div class="btn btn-outline join-item">USD</div>
-            </form>
+          <!-- User Balance Section -->
+          <div class="w-full">
             <div class="mt-2 p-3 bg-base-200 rounded-lg">
               <span class="text-sm opacity-70">Current Balance:</span>
               <span class="font-bold text-lg ml-2">
@@ -42,8 +26,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
           </div>
         </div>
       </div>
-      
-    <!-- Order Amount -->
+      <!-- Order Amount -->
       <div class="form-control w-full mt-10">
         <label class="label">
           <span class="label-text font-semibold">Order Amount (USD)</span>
@@ -62,8 +45,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
           />
         </form>
       </div>
-      
-    <!-- Trading Buttons -->
+      <!-- Trading Buttons -->
       <div class="card-actions justify-center mt-6">
         <div class="join w-full">
           <button phx-click="buy" id="buy-btn" class="btn btn-success join-item flex-1">

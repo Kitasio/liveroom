@@ -1,118 +1,86 @@
 defmodule Track.UserTradeState do
   @moduledoc """
-  Manages the user's trade state, including balances in different units and PnL.
+  Manages the user's trade state, including balances and position information.
   """
-  alias Track.UserTradeState
 
-  defstruct [
-    :balance_usd,
-    :balance_sats,
-    :balance_btc,
-    :unrealised_pnl,
-    :realised_pnl,
-    :position_open
-  ]
+  alias Track.UserTradeState.Balance
+  alias Track.UserTradeState.Position
+
+  defstruct [:balance, :position]
 
   @doc """
   Creates a new, empty user trade state.
   """
   def new() do
-    %UserTradeState{
-      balance_usd: 0,
-      balance_sats: 0,
-      balance_btc: 0,
-      unrealised_pnl: 0,
-      realised_pnl: 0,
-      position_open: false
-    }
-  end
-
-  def update_position(%UserTradeState{} = state, bitmex_position, btc_price) do
-    %{"isOpen" => position_open, "unrealisedPnl" => unrealised_pnl, "realisedPnl" => realised_pnl} =
-      bitmex_position
-
-    %UserTradeState{
-      state
-      | unrealised_pnl: sats_to_usd(unrealised_pnl, btc_price) |> round(),
-        realised_pnl: sats_to_usd(realised_pnl, btc_price) |> round(),
-        position_open: position_open
+    %__MODULE__{
+      balance: Balance.new(),
+      position: Position.new()
     }
   end
 
   @doc """
-  Gets the balance in the specified unit.
+  Updates the user's position information from BitMEX data.
+
+  Takes the current trade state, a BitMEX position map, and the current BTC price,
+  and returns an updated state with the latest position data. PnL values are
+  converted to USD within the nested position struct.
+
+  ## Examples
+
+      iex> state = Track.UserTradeState.new()
+      iex> position_data = %{"isOpen" => true, "unrealisedPnl" => 1000, "realisedPnl" => 500, "leverage" => 10, "currentQty" => 100}
+      iex> updated = Track.UserTradeState.update_position(state, position_data, 50000)
+      iex> updated.position.is_open
+      true
+      iex> updated.position.unrealised_pnl
+      5
+
+  """
+  def update_position(%__MODULE__{} = state, bitmex_position, btc_price) do
+    %__MODULE__{
+      state
+      | position: Position.update(state.position, bitmex_position, btc_price)
+    }
+  end
+
+  @doc """
+  Gets the balance in the specified unit from the nested Balance struct.
 
   Defaults to `:sats`.
+
+  Delegates to `Track.UserTradeState.Balance.get_balance/2`.
   """
-  def get_balance(%UserTradeState{balance_sats: sats}, :sats), do: sats
-  def get_balance(%UserTradeState{balance_usd: usd}, :usd), do: usd
-  def get_balance(%UserTradeState{balance_btc: btc}, :btc), do: btc
-  def get_balance(%UserTradeState{} = state), do: get_balance(state, :sats)
+  def get_balance(%__MODULE__{balance: balance}, unit \\ :sats) do
+    Balance.get_balance(balance, unit)
+  end
 
   @doc """
-  Updates the balance in the user trade state.
+  Updates the balance in the nested Balance struct.
 
   Accepts a tuple `{:unit, balance}` where unit is `:sats` or `:btc`.
   Does not update the USD balance.
-  """
-  def update_balance(%UserTradeState{} = state, {:sats, balance}) do
-    %UserTradeState{
-      state
-      | balance_sats: balance,
-        balance_btc: sats_to_btc(balance)
-    }
-  end
 
-  def update_balance(%UserTradeState{} = state, {:btc, balance}) do
-    %UserTradeState{
+  Delegates to `Track.UserTradeState.Balance.update_balance/2`.
+  """
+  def update_balance(%__MODULE__{} = state, balance_tuple) do
+    %__MODULE__{
       state
-      | balance_btc: balance,
-        balance_sats: btc_to_sats(balance)
+      | balance: Balance.update_balance(state.balance, balance_tuple)
     }
   end
 
   @doc """
-  Updates the balance in the user trade state, including the USD balance.
+  Updates the balance in the nested Balance struct, including the USD balance.
 
   Accepts a tuple `{:unit, balance}` where unit is `:sats` or `:btc`,
   and the current BTC price in USD.
+
+  Delegates to `Track.UserTradeState.Balance.update_balance/3`.
   """
-  def update_balance(%UserTradeState{} = state, {:sats, balance}, btc_price) do
-    %UserTradeState{
+  def update_balance(%__MODULE__{} = state, balance_tuple, btc_price) do
+    %__MODULE__{
       state
-      | balance_sats: balance,
-        balance_usd: sats_to_usd(balance, btc_price),
-        balance_btc: sats_to_btc(balance)
+      | balance: Balance.update_balance(state.balance, balance_tuple, btc_price)
     }
-  end
-
-  def update_balance(%UserTradeState{} = state, {:btc, balance}, btc_price) do
-    %UserTradeState{
-      state
-      | balance_btc: balance,
-        balance_usd: btc_to_usd(balance, btc_price),
-        balance_sats: btc_to_sats(balance)
-    }
-  end
-
-  @doc false
-  defp sats_to_usd(sats, btc_price) do
-    usd_value = sats / 100_000_000 * btc_price
-    round(usd_value)
-  end
-
-  @doc false
-  defp sats_to_btc(sats) do
-    sats / 100_000_000
-  end
-
-  @doc false
-  defp btc_to_usd(btc, btc_price) do
-    btc * btc_price
-  end
-
-  @doc false
-  defp btc_to_sats(btc) do
-    btc * 100_000_000
   end
 end

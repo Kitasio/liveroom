@@ -37,6 +37,12 @@
           {@current_scope.user.email}
         </li>
         <li>
+          <.link href={~p"/rooms/#{@current_scope.user.id}"}>My room</.link>
+        </li>
+        <li>
+          <.link href={~p"/bitmex_settings"}>API Keys</.link>
+        </li>
+        <li>
           <.link href={~p"/users/settings"}>Settings</.link>
         </li>
         <li>
