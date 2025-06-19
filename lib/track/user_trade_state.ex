@@ -3,7 +3,15 @@ defmodule Track.UserTradeState do
   Manages the user's trade state, including balances in different units and PnL.
   """
   alias Track.UserTradeState
-  defstruct [:balance_usd, :balance_sats, :balance_btc, :unrealized_pnl, :realized_pnl]
+
+  defstruct [
+    :balance_usd,
+    :balance_sats,
+    :balance_btc,
+    :unrealised_pnl,
+    :realised_pnl,
+    :position_open
+  ]
 
   @doc """
   Creates a new, empty user trade state.
@@ -13,8 +21,21 @@ defmodule Track.UserTradeState do
       balance_usd: 0,
       balance_sats: 0,
       balance_btc: 0,
-      unrealized_pnl: 0,
-      realized_pnl: 0
+      unrealised_pnl: 0,
+      realised_pnl: 0,
+      position_open: false
+    }
+  end
+
+  def update_position(%UserTradeState{} = state, bitmex_position, btc_price) do
+    %{"isOpen" => position_open, "unrealisedPnl" => unrealised_pnl, "realisedPnl" => realised_pnl} =
+      bitmex_position
+
+    %UserTradeState{
+      state
+      | unrealised_pnl: sats_to_usd(unrealised_pnl, btc_price) |> round(),
+        realised_pnl: sats_to_usd(realised_pnl, btc_price) |> round(),
+        position_open: position_open
     }
   end
 

@@ -15,7 +15,8 @@ defmodule TrackWeb.RoomLive do
       <.navbar
         is_owner={@is_owner}
         btc_price={@btc_price}
-        unrealized_pnl={@trade_state.unrealized_pnl}
+        unrealised_pnl={@trade_state.unrealised_pnl}
+        position_open={@trade_state.position_open}
       />
       <!-- Main Content Grid -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -35,13 +36,14 @@ defmodule TrackWeb.RoomLive do
     if connected?(socket) do
       PubSub.subscribe(Track.PubSub, "room:#{room_id}")
       PubSub.subscribe(Track.PubSub, "btc_price")
-      # PubSub.subscribe(Track.PubSub, "user:#{username}")
+      :timer.send_interval(5_000, :tick)
+
+      send(self(), :load_balance)
+      send(self(), :tick)
     end
 
     user_id = socket.assigns[:current_scope].user.id
     is_owner = user_id == parse_number(room_id)
-
-    send(self(), :load_balance)
 
     {:ok,
      socket
@@ -96,6 +98,19 @@ defmodule TrackWeb.RoomLive do
     {:noreply, socket |> assign(:order_price, price)}
   end
 
+  def handle_info(:tick, socket) do
+    position = Track.BitmexClient.get_positions(socket.assigns[:current_scope], "XBTUSD") |> hd()
+
+    new_trade_state =
+      UserTradeState.update_position(
+        socket.assigns[:trade_state],
+        position,
+        socket.assigns[:btc_price]
+      )
+
+    {:noreply, assign(socket, :trade_state, new_trade_state)}
+  end
+
   def handle_info(:load_balance, socket) do
     scope = socket.assigns[:current_scope]
     %{"amount" => balance} = Track.BitmexClient.get_balance(scope) |> hd()
@@ -116,7 +131,7 @@ defmodule TrackWeb.RoomLive do
         btc_price
       )
 
-    {:noreply, assign(socket, trade_state: new_trade_state)}
+    {:noreply, assign(socket, trade_state: new_trade_state, btc_price: btc_price)}
   end
 
   def handle_info({:order_executed, :buy}, socket) do
