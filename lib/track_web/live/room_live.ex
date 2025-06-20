@@ -1,7 +1,6 @@
 defmodule TrackWeb.RoomLive do
   alias Track.UserTradeState
   use TrackWeb, :live_view
-  import TrackWeb.RoomLive.Navbar
   import TrackWeb.RoomLive.TradingPanel
   import TrackWeb.RoomLive.OrderLog
   alias Phoenix.PubSub
@@ -10,16 +9,16 @@ defmodule TrackWeb.RoomLive do
     ~H"""
     <div id="screen" class="min-h-screen bg-base-200 p-4">
       <div id="dots"></div>
-      <!-- Header Section -->
-      <.navbar is_owner={@is_owner} btc_price={@btc_price} />
       <!-- Main Content Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <.trading_panel
           is_owner={@is_owner}
-          user_balance={@trade_state.balance.balance_usd}
+          balance_usd={@trade_state.balance.balance_usd}
+          balance_btc={@trade_state.balance.balance_btc}
           order_price={@order_price}
+          btc_live_price={@btc_price}
         />
-        <div class="lg:col-span-2">
+        <div class="xl:col-span-2">
           <.order_log positions={@trade_state.positions} />
         </div>
       </div>
@@ -46,7 +45,7 @@ defmodule TrackWeb.RoomLive do
      |> assign(:room_id, room_id)
      |> assign(:trade_state, UserTradeState.new())
      |> assign(:btc_price, 0.00)
-     |> assign(:order_price, 1)}
+     |> assign(:order_price, nil)}
   end
 
   def handle_event("buy", _params, socket) do
@@ -79,7 +78,9 @@ defmodule TrackWeb.RoomLive do
     {:noreply, socket}
   end
 
-  def handle_event("update_order_price", %{"price" => price}, socket) do
+  def handle_event("update_order_price", params, socket) do
+    IO.inspect(params, label: "UPDATE ORDER PRICE PARAMS")
+    price = Map.get(params, "price") || Map.get(params, "price-range")
     topic = "room:#{socket.assigns[:room_id]}"
     balance_usd = UserTradeState.get_balance(socket.assigns[:trade_state], :usd)
 

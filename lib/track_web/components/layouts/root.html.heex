@@ -31,32 +31,39 @@
     </script>
   </head>
   <body>
-    <ul class="menu menu-horizontal w-full relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
-      <%= if @current_scope do %>
-        <li>
-          {@current_scope.user.email}
-        </li>
-        <li>
-          <.link href={~p"/rooms/#{@current_scope.user.id}"}>My room</.link>
-        </li>
-        <li>
-          <.link href={~p"/bitmex_settings"}>API Keys</.link>
-        </li>
-        <li>
-          <.link href={~p"/users/settings"}>Settings</.link>
-        </li>
-        <li>
-          <.link href={~p"/users/log-out"} method="delete">Log out</.link>
-        </li>
-      <% else %>
-        <li>
-          <.link href={~p"/users/register"}>Register</.link>
-        </li>
-        <li>
-          <.link href={~p"/users/log-in"}>Log in</.link>
-        </li>
-      <% end %>
-    </ul>
+    <div class="navbar bg-base-100 shadow-sm">
+      <div class="flex-1">
+        <a class="btn btn-ghost text-xl">LiveRoom</a>
+      </div>
+      <div class="flex-none">
+        <ul class="menu menu-horizontal w-full relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
+          <%= if @current_scope do %>
+            <li>
+              {@current_scope.user.email}
+            </li>
+            <li>
+              <.link href={~p"/rooms/#{@current_scope.user.id}"}>My room</.link>
+            </li>
+            <li>
+              <.link href={~p"/bitmex_settings"}>API Keys</.link>
+            </li>
+            <li>
+              <.link href={~p"/users/settings"}>Settings</.link>
+            </li>
+            <li>
+              <.link href={~p"/users/log-out"} method="delete">Log out</.link>
+            </li>
+          <% else %>
+            <li>
+              <.link href={~p"/users/register"}>Register</.link>
+            </li>
+            <li>
+              <.link href={~p"/users/log-in"}>Log in</.link>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
     {@inner_content}
   </body>
 </html>
