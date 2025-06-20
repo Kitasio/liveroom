@@ -11,12 +11,7 @@ defmodule TrackWeb.RoomLive do
     <div id="screen" class="min-h-screen bg-base-200 p-4">
       <div id="dots"></div>
       <!-- Header Section -->
-      <.navbar
-        is_owner={@is_owner}
-        btc_price={@btc_price}
-        unrealised_pnl={@trade_state.position.unrealised_pnl}
-        position_open={@trade_state.position.is_open}
-      />
+      <.navbar is_owner={@is_owner} btc_price={@btc_price} />
       <!-- Main Content Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <.trading_panel
@@ -25,7 +20,7 @@ defmodule TrackWeb.RoomLive do
           order_price={@order_price}
         />
         <div class="lg:col-span-2">
-          <.order_log />
+          <.order_log positions={@trade_state.positions} />
         </div>
       </div>
     </div>
@@ -99,12 +94,12 @@ defmodule TrackWeb.RoomLive do
   end
 
   def handle_info(:tick, socket) do
-    position = Track.BitmexClient.get_positions(socket.assigns[:current_scope], "XBTUSD") |> hd()
+    positions = Track.BitmexClient.get_positions(socket.assigns[:current_scope], "XBTUSD")
 
     new_trade_state =
-      UserTradeState.update_position(
+      UserTradeState.update_positions(
         socket.assigns[:trade_state],
-        position,
+        positions,
         socket.assigns[:btc_price]
       )
 

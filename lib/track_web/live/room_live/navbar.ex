@@ -4,8 +4,6 @@ defmodule TrackWeb.RoomLive.Navbar do
 
   attr :is_owner, :boolean, required: true
   attr :btc_price, :string, required: true
-  attr :unrealised_pnl, :integer, required: true
-  attr :position_open, :boolean, required: true
 
   def navbar(assigns) do
     ~H"""
@@ -26,7 +24,6 @@ defmodule TrackWeb.RoomLive.Navbar do
         </div>
       </div>
       <div class="navbar-end flex gap-5">
-        <p :if={@position_open}>PNL: {@unrealised_pnl}</p>
         <p :if={@is_owner} class="capitalize font-medium text-green-600">Room owner</p>
       </div>
     </div>

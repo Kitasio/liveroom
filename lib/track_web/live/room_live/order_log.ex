@@ -12,9 +12,19 @@ defmodule TrackWeb.RoomLive.OrderLog do
         <div class="divider my-2"></div>
         <div id="order-log" class="h-80 overflow-y-auto space-y-2">
           <div id="empty-order-log" class="only:block hidden text-center text-base-content/50 mt-8">
-            <.icon name="hero-inbox" class="w-12 h-12 mx-auto mb-2 opacity-30" />
-            <p class="text-sm">No orders yet</p>
-            <p class="text-xs opacity-70">Your positions will appear here</p>
+            <.icon name="hero-inbox" class="w-12 h-12 mx-auto mb-2 opacity-3" />
+            <p class="text-sm">No open positions</p>
+            <p class="text-xs opacity-70">Your open positions will appear here</p>
+          </div>
+          <div
+            :for={position <- @positions}
+            :if={position.is_open}
+            class="border border-base-300 rounded-lg p-3 text-sm"
+          >
+            <p><strong>Quantity:</strong> {position.current_qty}</p>
+            <p><strong>Leverage:</strong> {position.leverage}</p>
+            <p><strong>Unrealised PnL (USD):</strong> {position.unrealised_pnl}</p>
+            <p><strong>Realised PnL (USD):</strong> {position.realised_pnl}</p>
           </div>
         </div>
       </div>

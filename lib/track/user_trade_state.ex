@@ -6,7 +6,14 @@ defmodule Track.UserTradeState do
   alias Track.UserTradeState.Balance
   alias Track.UserTradeState.Position
 
-  defstruct [:balance, :position]
+  defstruct [:balance, :positions]
+
+  @moduledoc """
+  Manages the user's trade state, including balances and position information.
+  """
+
+  alias Track.UserTradeState.Balance
+  alias Track.UserTradeState.Position
 
   @doc """
   Creates a new, empty user trade state.
@@ -14,32 +21,34 @@ defmodule Track.UserTradeState do
   def new() do
     %__MODULE__{
       balance: Balance.new(),
-      position: Position.new()
+      positions: []
     }
   end
 
   @doc """
-  Updates the user's position information from BitMEX data.
+  Updates the user's position information from a list of BitMEX position maps.
 
-  Takes the current trade state, a BitMEX position map, and the current BTC price,
+  Takes the current trade state, a list of BitMEX position maps, and the current BTC price,
   and returns an updated state with the latest position data. PnL values are
-  converted to USD within the nested position struct.
+  converted to USD within the nested position structs.
 
   ## Examples
 
       iex> state = Track.UserTradeState.new()
-      iex> position_data = %{"isOpen" => true, "unrealisedPnl" => 1000, "realisedPnl" => 500, "leverage" => 10, "currentQty" => 100}
-      iex> updated = Track.UserTradeState.update_position(state, position_data, 50000)
-      iex> updated.position.is_open
+      iex> positions_data = [%{"isOpen" => true, "unrealisedPnl" => 1000, "realisedPnl" => 500, "leverage" => 10, "currentQty" => 100}]
+      iex> updated = Track.UserTradeState.update_positions(state, positions_data, 50000)
+      iex> [position | _] = updated.positions
+      iex> position.is_open
       true
-      iex> updated.position.unrealised_pnl
+      iex> position.unrealised_pnl
       5
 
   """
-  def update_position(%__MODULE__{} = state, bitmex_position, btc_price) do
+  def update_positions(%__MODULE__{} = state, bitmex_positions, btc_price) do
+    updated_positions = Enum.map(bitmex_positions, fn pos -> Position.update(Position.new(), pos, btc_price) end)
     %__MODULE__{
       state
-      | position: Position.update(state.position, bitmex_position, btc_price)
+      | positions: updated_positions
     }
   end
 
