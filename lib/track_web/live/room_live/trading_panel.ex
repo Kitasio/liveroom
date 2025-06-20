@@ -55,7 +55,8 @@ defmodule TrackWeb.RoomLive.TradingPanel do
               />
               <input
                 id="price-input"
-                min="1"
+                min="0"
+                step="100"
                 name="price"
                 value={@order_price}
                 type="number"
