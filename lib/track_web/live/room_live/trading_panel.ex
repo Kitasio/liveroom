@@ -53,6 +53,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
                 name="price-range"
                 phx-input="update_order_price"
                 phx-change="update_order_price"
+                disabled={!@is_owner}
               />
               <input
                 id="price-input"

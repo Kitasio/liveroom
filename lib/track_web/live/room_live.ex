@@ -49,14 +49,11 @@ defmodule TrackWeb.RoomLive do
   def handle_event("buy", _params, socket) do
     topic = "room:#{socket.assigns[:room_id]}"
 
-    PubSub.broadcast_from!(
+    PubSub.broadcast!(
       Track.PubSub,
-      self(),
       topic,
       {:order_executed, :buy}
     )
-
-    place_order_and_update_balance(socket, "Buy")
 
     {:noreply, socket}
   end
@@ -64,14 +61,11 @@ defmodule TrackWeb.RoomLive do
   def handle_event("sell", _params, socket) do
     topic = "room:#{socket.assigns[:room_id]}"
 
-    PubSub.broadcast_from!(
+    PubSub.broadcast!(
       Track.PubSub,
-      self(),
       topic,
       {:order_executed, :sell}
     )
-
-    place_order_and_update_balance(socket, "Sell")
 
     {:noreply, socket}
   end
@@ -89,6 +83,20 @@ defmodule TrackWeb.RoomLive do
     )
 
     {:noreply, socket |> assign(:order_price, price)}
+  end
+
+  def handle_event("close_position", %{"symbol" => symbol}, socket) do
+    case Track.BitmexClient.close_position(socket.assigns[:current_scope], symbol) do
+      {:error, reason} ->
+        # You could add a flash message here if needed
+        IO.puts("Failed to close position: #{reason}")
+        {:noreply, socket}
+
+      _result ->
+        # Refresh the trade state after closing position
+        send(self(), :tick)
+        {:noreply, socket}
+    end
   end
 
   def handle_info(:tick, socket) do
