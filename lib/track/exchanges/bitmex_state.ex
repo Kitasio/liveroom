@@ -8,12 +8,15 @@ defmodule Track.Exchanges.BitmexState do
   def new() do
     %__MODULE__{
       balance: %{
-        usd: nil,
-        sats: nil,
-        btc: nil
+        usd: 0,
+        sats: 0,
+        btc: 0
       },
       positions: [],
-      margin_info: %{}
+      margin_info: %{
+        max_buy_size_usd: 0,
+        max_sell_size_usd: 0
+      }
     }
   end
 

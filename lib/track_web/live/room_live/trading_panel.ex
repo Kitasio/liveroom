@@ -3,8 +3,6 @@ defmodule TrackWeb.RoomLive.TradingPanel do
   use TrackWeb, :live_view
 
   attr :is_owner, :boolean, required: true
-  attr :balance_btc, :integer, required: true
-  attr :balance_usd, :integer, required: true
   attr :order_price, :integer, required: true
   attr :btc_live_price, :integer, required: true
   attr :trade_state, :map, required: true
@@ -28,12 +26,14 @@ defmodule TrackWeb.RoomLive.TradingPanel do
           <div class="stats bg-base-100 border-base-300 border">
             <div class="stat">
               <div class="stat-title">Balance USD</div>
-              <div class="stat-value">${@balance_usd}</div>
+              <div class="stat-value">
+                ${@trade_state.balance.usd |> Decimal.round()}
+              </div>
             </div>
 
             <div class="stat relative">
               <div class="stat-title">Balance BTC</div>
-              <div class="stat-value">{@balance_btc}</div>
+              <div class="stat-value">{@trade_state.balance.btc |> Decimal.round(5)}</div>
             </div>
           </div>
           <!-- Order Amount -->
@@ -45,7 +45,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
               <input
                 type="range"
                 min="0"
-                max={Track.UserTradeState.get_max_buy_size(@trade_state, @btc_live_price)}
+                max={@trade_state.margin_info.max_buy_size_usd}
                 value={@order_price}
                 class="range w-full my-3"
                 step="100"
@@ -73,11 +73,11 @@ defmodule TrackWeb.RoomLive.TradingPanel do
               <div class="text-sm font-medium text-base-content mb-2">Max Size:</div>
               <div class="flex justify-between items-center text-sm">
                 <span class="text-error">
-                  {Track.UserTradeState.get_max_sell_size(@trade_state, @btc_live_price)} USD
+                  {@trade_state.margin_info.max_sell_size_usd} USD
                 </span>
                 <span class="text-base-content/50">/</span>
                 <span class="text-success">
-                  {Track.UserTradeState.get_max_buy_size(@trade_state, @btc_live_price)} USD
+                  {@trade_state.margin_info.max_buy_size_usd} USD
                 </span>
               </div>
             </div>

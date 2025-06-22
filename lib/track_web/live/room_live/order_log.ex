@@ -23,8 +23,12 @@ defmodule TrackWeb.RoomLive.OrderLog do
           >
             <p><strong>Quantity:</strong> {position.current_qty}</p>
             <p><strong>Leverage:</strong> {position.leverage}</p>
-            <p><strong>Unrealised PnL (USD):</strong> {position.unrealised_pnl}</p>
-            <p><strong>Realised PnL (USD):</strong> {position.realised_pnl}</p>
+            <p>
+              <strong>Unrealised PnL (USD):</strong> {position.unrealised_pnl_usd |> Decimal.round()}
+            </p>
+            <p>
+              <strong>Realised PnL (USD):</strong> {position.realised_pnl_usd |> Decimal.round()}
+            </p>
           </div>
         </div>
       </div>

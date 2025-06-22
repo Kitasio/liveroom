@@ -7,6 +7,7 @@ defmodule Track.Exchanges do
   alias Track.Repo
 
   alias Track.Exchanges.BitmexSetting
+  alias Track.Exchanges.BitmexState
   alias Track.Accounts.Scope
 
   @doc """
@@ -170,10 +171,6 @@ defmodule Track.Exchanges do
   end
 
   def get_bitmex_state(%Scope{} = scope) do
-    scope
-    |> BitmexState.new()
-    |> BitmexState.get_balance()
-    |> BitmexState.get_positions()
-    |> BitmexState.get_margin_info()
+    BitmexState.get_state(scope)
   end
 end

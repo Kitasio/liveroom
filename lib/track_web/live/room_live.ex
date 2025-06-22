@@ -1,5 +1,5 @@
 defmodule TrackWeb.RoomLive do
-  alias Track.UserTradeState
+  alias Track.Exchanges.BitmexState
   use TrackWeb, :live_view
   import TrackWeb.RoomLive.TradingPanel
   import TrackWeb.RoomLive.OrderLog
@@ -13,8 +13,6 @@ defmodule TrackWeb.RoomLive do
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <.trading_panel
           is_owner={@is_owner}
-          balance_usd={@trade_state.balance.balance_usd}
-          balance_btc={@trade_state.balance.balance_btc}
           order_price={@order_price}
           btc_live_price={@btc_price}
           trade_state={@trade_state}
@@ -33,7 +31,6 @@ defmodule TrackWeb.RoomLive do
       PubSub.subscribe(Track.PubSub, "btc_price")
       :timer.send_interval(5_000, :tick)
 
-      send(self(), :load_balance)
       send(self(), :tick)
     end
 
@@ -44,7 +41,7 @@ defmodule TrackWeb.RoomLive do
      socket
      |> assign(:is_owner, is_owner)
      |> assign(:room_id, room_id)
-     |> assign(:trade_state, UserTradeState.new())
+     |> assign(:trade_state, BitmexState.new())
      |> assign(:btc_price, 0.00)
      |> assign(:order_price, nil)}
   end
@@ -80,10 +77,9 @@ defmodule TrackWeb.RoomLive do
   end
 
   def handle_event("update_order_price", params, socket) do
-    IO.inspect(params, label: "UPDATE ORDER PRICE PARAMS")
     price = Map.get(params, "price") || Map.get(params, "price-range")
     topic = "room:#{socket.assigns[:room_id]}"
-    balance_usd = UserTradeState.get_balance(socket.assigns[:trade_state], :usd)
+    balance_usd = socket.assigns[:trade_state].balance.usd
 
     PubSub.broadcast_from!(
       Track.PubSub,
@@ -96,42 +92,15 @@ defmodule TrackWeb.RoomLive do
   end
 
   def handle_info(:tick, socket) do
-    positions = Track.BitmexClient.get_positions(socket.assigns[:current_scope], "XBTUSD")
+    updated_trade_state =
+      Track.Exchanges.get_bitmex_state(socket.assigns[:current_scope])
 
-    new_trade_state =
-      UserTradeState.update_positions(
-        socket.assigns[:trade_state],
-        positions,
-        socket.assigns[:btc_price]
-      )
-
-    {:noreply, assign(socket, :trade_state, new_trade_state)}
-  end
-
-  def handle_info(:load_balance, socket) do
-    scope = socket.assigns[:current_scope]
-    %{"amount" => balance} = Track.BitmexClient.get_balance(scope) |> hd()
-    margin_info = Track.BitmexClient.get_margin_info(scope)
-
-    new_trade_state =
-      socket.assigns[:trade_state]
-      |> UserTradeState.update_balance({:sats, balance})
-      |> UserTradeState.update_margin_info(margin_info)
-
-    {:noreply, assign(socket, :trade_state, new_trade_state)}
+    {:noreply, assign(socket, :trade_state, updated_trade_state)}
   end
 
   def handle_info({:btc_price_updated, price}, socket) do
     btc_price = parse_number(price) |> Float.round(2)
-
-    new_trade_state =
-      UserTradeState.update_balance(
-        socket.assigns[:trade_state],
-        {:sats, socket.assigns[:trade_state].balance.balance_sats},
-        btc_price
-      )
-
-    {:noreply, assign(socket, trade_state: new_trade_state, btc_price: btc_price)}
+    {:noreply, assign(socket, btc_price: btc_price)}
   end
 
   def handle_info({:order_executed, :buy}, socket) do
@@ -171,11 +140,11 @@ defmodule TrackWeb.RoomLive do
       parse_number(socket.assigns[:order_price])
     )
 
-    send(self(), :load_balance)
+    send(self(), :tick)
   end
 
   defp calculate_proportional_amount(socket, initiator_user_balance, amount) do
-    user_balance_usd = UserTradeState.get_balance(socket.assigns[:trade_state], :usd)
+    user_balance_usd = socket.assigns[:trade_state].balance.usd
 
     case {parse_number(user_balance_usd), parse_number(initiator_user_balance),
           parse_number(amount)} do
