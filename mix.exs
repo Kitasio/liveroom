@@ -62,7 +62,7 @@ defmodule Track.MixProject do
       {:bandit, "~> 1.5"},
       {:websockex, "~> 0.4.3"},
       {:apexcharts, github: "apexcharts/apexcharts.js", app: false, compile: false},
-      {:meck, "~> 0.8", only: :test}
+      {:mox, "~> 1.2.0", only: :test}
     ]
   end
 
