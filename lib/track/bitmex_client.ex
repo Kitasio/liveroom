@@ -18,6 +18,24 @@ defmodule Track.BitmexClient do
     request(settings, :get, "/api/v1/user/margin", %{}, %{"currency" => currency})
   end
 
+  def get_instrument(%Scope{} = scope, symbol \\ "XBTUSD") do
+    settings = Exchanges.get_latest_bitmex_setting!(scope)
+    request(settings, :get, "/api/v1/instrument", %{}, %{"symbol" => symbol})
+  end
+
+  @doc """
+  Fetches detailed margin information including available margin for max size calculations.
+  """
+  def get_margin_info(%Scope{} = scope, currency \\ "XBt") do
+    settings = Exchanges.get_latest_bitmex_setting!(scope)
+
+    case request(settings, :get, "/api/v1/user/margin", %{}, %{"currency" => currency}) do
+      [margin_data | _] -> margin_data
+      margin_data when is_map(margin_data) -> margin_data
+      _ -> %{}
+    end
+  end
+
   @doc """
   Places a market order for a given symbol, side, and quantity.
 

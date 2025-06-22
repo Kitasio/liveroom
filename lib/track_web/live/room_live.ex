@@ -17,6 +17,7 @@ defmodule TrackWeb.RoomLive do
           balance_btc={@trade_state.balance.balance_btc}
           order_price={@order_price}
           btc_live_price={@btc_price}
+          trade_state={@trade_state}
         />
         <div class="xl:col-span-2">
           <.order_log positions={@trade_state.positions} />
@@ -110,9 +111,12 @@ defmodule TrackWeb.RoomLive do
   def handle_info(:load_balance, socket) do
     scope = socket.assigns[:current_scope]
     %{"amount" => balance} = Track.BitmexClient.get_balance(scope) |> hd()
+    margin_info = Track.BitmexClient.get_margin_info(scope)
 
     new_trade_state =
-      UserTradeState.update_balance(socket.assigns[:trade_state], {:sats, balance})
+      socket.assigns[:trade_state]
+      |> UserTradeState.update_balance({:sats, balance})
+      |> UserTradeState.update_margin_info(margin_info)
 
     {:noreply, assign(socket, :trade_state, new_trade_state)}
   end

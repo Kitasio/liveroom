@@ -104,4 +104,44 @@ defmodule Track.UserTradeState.Balance do
   def btc_to_sats(btc) do
     btc * 100_000_000
   end
+
+  @doc """
+  Calculates maximum buy size based on available margin and leverage.
+  
+  Takes available margin in satoshis, leverage multiplier, and BTC price.
+  Returns max buy size in USD.
+  """
+  def calculate_max_buy_size(available_margin_sats, leverage, btc_price) when available_margin_sats > 0 and leverage > 0 do
+    # Convert available margin to USD
+    available_margin_usd = sats_to_usd(available_margin_sats, btc_price)
+    
+    # Max buy size = available margin * leverage * safety factor (0.95 to account for fees/slippage)
+    max_size = available_margin_usd * leverage * 0.95
+    round(max_size)
+  end
+
+  def calculate_max_buy_size(_, _, _), do: 0
+
+  @doc """
+  Calculates maximum sell size based on available margin, leverage, and current position.
+  
+  Takes available margin in satoshis, leverage multiplier, BTC price, and current position quantity.
+  Returns max sell size in USD.
+  """
+  def calculate_max_sell_size(available_margin_sats, leverage, btc_price, current_position_qty \\ 0) when available_margin_sats > 0 and leverage > 0 do
+    # Convert available margin to USD
+    available_margin_usd = sats_to_usd(available_margin_sats, btc_price)
+    
+    # Base max size calculation
+    base_max_size = available_margin_usd * leverage * 0.95
+    
+    # If we have a long position, we can sell more (close position + open short)
+    # If we have a short position, we have less margin available for additional shorts
+    position_adjustment = if current_position_qty > 0, do: current_position_qty * 0.1, else: 0
+    
+    max_size = base_max_size + position_adjustment
+    round(max_size)
+  end
+
+  def calculate_max_sell_size(_, _, _, _), do: 0
 end

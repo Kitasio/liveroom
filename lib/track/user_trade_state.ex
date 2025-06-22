@@ -6,11 +6,7 @@ defmodule Track.UserTradeState do
   alias Track.UserTradeState.Balance
   alias Track.UserTradeState.Position
 
-  defstruct [:balance, :positions]
-
-  @moduledoc """
-  Manages the user's trade state, including balances and position information.
-  """
+  defstruct [:balance, :positions, :margin_info]
 
   alias Track.UserTradeState.Balance
   alias Track.UserTradeState.Position
@@ -21,7 +17,8 @@ defmodule Track.UserTradeState do
   def new() do
     %__MODULE__{
       balance: Balance.new(),
-      positions: []
+      positions: [],
+      margin_info: %{}
     }
   end
 
@@ -45,7 +42,9 @@ defmodule Track.UserTradeState do
 
   """
   def update_positions(%__MODULE__{} = state, bitmex_positions, btc_price) do
-    updated_positions = Enum.map(bitmex_positions, fn pos -> Position.update(Position.new(), pos, btc_price) end)
+    updated_positions =
+      Enum.map(bitmex_positions, fn pos -> Position.update(Position.new(), pos, btc_price) end)
+
     %__MODULE__{
       state
       | positions: updated_positions
@@ -91,5 +90,58 @@ defmodule Track.UserTradeState do
       state
       | balance: Balance.update_balance(state.balance, balance_tuple, btc_price)
     }
+  end
+
+  @doc """
+  Updates the margin information from BitMEX margin data.
+
+  Takes the current trade state and BitMEX margin response map.
+  """
+  def update_margin_info(%__MODULE__{} = state, margin_data) when is_map(margin_data) do
+    %__MODULE__{
+      state
+      | margin_info: margin_data
+    }
+  end
+
+  @doc """
+  Calculates maximum buy size based on current margin and position data.
+
+  Returns max buy size in USD.
+  """
+  def get_max_buy_size(%__MODULE__{} = state, btc_price) do
+    available_margin = Map.get(state.margin_info, "availableMargin", 0)
+    leverage = get_effective_leverage(state)
+
+    Balance.calculate_max_buy_size(available_margin, leverage, btc_price)
+  end
+
+  @doc """
+  Calculates maximum sell size based on current margin and position data.
+
+  Returns max sell size in USD.
+  """
+  def get_max_sell_size(%__MODULE__{} = state, btc_price) do
+    available_margin = Map.get(state.margin_info, "availableMargin", 0)
+    leverage = get_effective_leverage(state)
+    current_qty = get_current_position_qty(state)
+
+    Balance.calculate_max_sell_size(available_margin, leverage, btc_price, current_qty)
+  end
+
+  # Private helper functions
+  defp get_effective_leverage(%__MODULE__{positions: positions}) do
+    case positions do
+      [%Position{leverage: leverage} | _] when leverage > 0 -> leverage
+      # Default to 1x if no position or leverage info
+      _ -> 1
+    end
+  end
+
+  defp get_current_position_qty(%__MODULE__{positions: positions}) do
+    case positions do
+      [%Position{current_qty: qty} | _] -> qty
+      _ -> 0
+    end
   end
 end

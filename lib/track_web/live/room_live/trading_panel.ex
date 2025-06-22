@@ -7,6 +7,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
   attr :balance_usd, :integer, required: true
   attr :order_price, :integer, required: true
   attr :btc_live_price, :integer, required: true
+  attr :trade_state, :map, required: true
 
   def trading_panel(assigns) do
     ~H"""
@@ -44,7 +45,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
               <input
                 type="range"
                 min="0"
-                max="10000"
+                max={Track.UserTradeState.get_max_buy_size(@trade_state, @btc_live_price)}
                 value={@order_price}
                 class="range w-full my-3"
                 step="100"
@@ -66,6 +67,20 @@ defmodule TrackWeb.RoomLive.TradingPanel do
                 disabled={!@is_owner}
               />
             </form>
+            
+    <!-- Max Size Display -->
+            <div class="mt-4 p-3 rounded-lg">
+              <div class="text-sm font-medium text-base-content mb-2">Max Size:</div>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-error">
+                  {Track.UserTradeState.get_max_sell_size(@trade_state, @btc_live_price)} USD
+                </span>
+                <span class="text-base-content/50">/</span>
+                <span class="text-success">
+                  {Track.UserTradeState.get_max_buy_size(@trade_state, @btc_live_price)} USD
+                </span>
+              </div>
+            </div>
           </div>
           <!-- Trading Buttons -->
           <div class="card-actions justify-center mt-6">

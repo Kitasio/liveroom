@@ -168,4 +168,12 @@ defmodule Track.Exchanges do
 
     BitmexSetting.changeset(bitmex_setting, attrs, scope)
   end
+
+  def get_bitmex_state(%Scope{} = scope) do
+    scope
+    |> BitmexState.new()
+    |> BitmexState.get_balance()
+    |> BitmexState.get_positions()
+    |> BitmexState.get_margin_info()
+  end
 end
