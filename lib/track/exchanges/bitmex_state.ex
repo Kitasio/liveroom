@@ -48,34 +48,39 @@ defmodule Track.Exchanges.BitmexState do
     # btc_price_float is float
     %{"lastPrice" => btc_price_float} = instrument_result |> hd()
 
-    # Use CurrencyConverter to perform conversions and get Decimal values
-    # Keep sats as Decimal for the state map
-    sats_decimal = Decimal.new(sats_int)
-    btc_decimal = CurrencyConverter.sats_to_btc(sats_int)
-    usd_decimal = CurrencyConverter.sats_to_usd(sats_int, btc_price_float)
+    # Use CurrencyConverter to perform conversions and get string values
+    sats_string = sats_int |> to_string()
+    btc_string = CurrencyConverter.sats_to_btc(sats_int)
+    usd_string = CurrencyConverter.sats_to_usd(sats_int, btc_price_float)
 
-    Map.put(state, :balance, %{usd: usd_decimal, sats: sats_decimal, btc: btc_decimal})
+    Map.put(state, :balance, %{usd: usd_string, sats: sats_string, btc: btc_string})
   end
 
   def get_positions(%__MODULE__{} = state, %Scope{} = scope, opts \\ []) do
     force_fetch_price = Keyword.get(opts, :force_fetch_price, false)
 
-    btc_price =
+    btc_price_source =
       if force_fetch_price do
         # Force fetch the instrument price
         {:ok, [instrument_result | _]} = BitmexClient.get_instrument(scope)
         %{"lastPrice" => btc_price_float} = instrument_result
-        Decimal.new(btc_price_float)
+        btc_price_float
       else
         # Try to get price from state, otherwise fetch
         case get_btc_price_from_state(state) do
           nil ->
             {:ok, [instrument_result | _]} = BitmexClient.get_instrument(scope)
             %{"lastPrice" => btc_price_float} = instrument_result
-            Decimal.new(btc_price_float)
+            btc_price_float
 
-          price ->
-            price
+          price_string ->
+            # CurrencyConverter expects numeric types or Decimal for price
+            # Attempt to parse the string price back to Decimal for conversion
+            case Decimal.new(price_string) do
+              %Decimal{} = price_decimal -> price_decimal
+              # Should not happen if get_btc_price_from_state returns valid string
+              _ -> nil
+            end
         end
       end
 
@@ -92,15 +97,15 @@ defmodule Track.Exchanges.BitmexState do
           "currentQty" => current_qty
         } = position
 
-        # Use the obtained btc_price (Decimal) for conversions
-        unrealised_pnl_usd = CurrencyConverter.sats_to_usd(unrealised_pnl_sats, btc_price)
-        realised_pnl_usd = CurrencyConverter.sats_to_usd(realised_pnl_sats, btc_price)
+        # Use the obtained btc_price_source (float or Decimal) for conversions
+        unrealised_pnl_usd = CurrencyConverter.sats_to_usd(unrealised_pnl_sats, btc_price_source)
+        realised_pnl_usd = CurrencyConverter.sats_to_usd(realised_pnl_sats, btc_price_source)
 
         %{
           is_open: is_open,
-          unrealised_pnl: unrealised_pnl_sats,
+          unrealised_pnl: unrealised_pnl_sats |> to_string(),
           unrealised_pnl_usd: unrealised_pnl_usd,
-          realised_pnl: realised_pnl_sats,
+          realised_pnl: realised_pnl_sats |> to_string(),
           realised_pnl_usd: realised_pnl_usd,
           leverage: leverage,
           current_qty: current_qty
@@ -110,13 +115,19 @@ defmodule Track.Exchanges.BitmexState do
     Map.put(state, :positions, positions)
   end
 
-  # Helper to derive BTC price from state balance if available
-  defp get_btc_price_from_state(%__MODULE__{balance: %{usd: usd, btc: btc}})
-       when is_struct(usd, Decimal) and is_struct(btc, Decimal) do
-    if Decimal.compare(usd, 0) == :gt and Decimal.compare(btc, 0) == :gt do
-      Decimal.div(usd, btc)
-    else
-      nil
+  # Helper to derive BTC price (as string) from state balance if available
+  defp get_btc_price_from_state(%__MODULE__{balance: %{usd: usd_str, btc: btc_str}})
+       when is_binary(usd_str) and is_binary(btc_str) do
+    case {Decimal.new(usd_str), Decimal.new(btc_str)} do
+      {%Decimal{} = usd, %Decimal{} = btc} ->
+        if Decimal.compare(usd, 0) == :gt and Decimal.compare(btc, 0) == :gt do
+          Decimal.div(usd, btc) |> Decimal.to_string()
+        else
+          nil
+        end
+
+      _ ->
+        nil
     end
   end
 
