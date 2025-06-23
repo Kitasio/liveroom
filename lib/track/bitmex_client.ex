@@ -58,6 +58,93 @@ defmodule Track.BitmexClient do
   end
 
   @doc """
+  Places a limit order for a given symbol, side, quantity, and price.
+
+  ## Examples
+
+      iex> Track.BitmexClient.place_limit_order(scope, "XBTUSD", "Buy", 100, 50000)
+      {:ok, order_details}
+  """
+  def place_limit_order(%Scope{} = scope, symbol, side, quantity, price) when side in ["Buy", "Sell"] do
+    settings = Exchanges.get_latest_bitmex_setting!(scope)
+
+    body = %{
+      "symbol" => symbol,
+      "orderQty" => quantity,
+      "side" => side,
+      "ordType" => "Limit",
+      "price" => price
+    }
+
+    request(settings, :post, "/api/v1/order", body)
+  end
+
+  @doc """
+  Places a stop market order for a given symbol, side, quantity, and stop price.
+
+  ## Examples
+
+      iex> Track.BitmexClient.place_stop_market_order(scope, "XBTUSD", "Buy", 100, 51000)
+      {:ok, order_details}
+  """
+  def place_stop_market_order(%Scope{} = scope, symbol, side, quantity, stop_px) when side in ["Buy", "Sell"] do
+    settings = Exchanges.get_latest_bitmex_setting!(scope)
+
+    body = %{
+      "symbol" => symbol,
+      "orderQty" => quantity,
+      "side" => side,
+      "ordType" => "Stop",
+      "stopPx" => stop_px
+    }
+
+    request(settings, :post, "/api/v1/order", body)
+  end
+
+  @doc """
+  Places an order with stop loss and take profit levels.
+  """
+  def place_order_with_sl_tp(%Scope{} = scope, symbol, side, quantity, opts \\ []) when side in ["Buy", "Sell"] do
+    settings = Exchanges.get_latest_bitmex_setting!(scope)
+    
+    order_type = Keyword.get(opts, :order_type, "Market")
+    price = Keyword.get(opts, :price)
+    stop_loss = Keyword.get(opts, :stop_loss)
+    take_profit = Keyword.get(opts, :take_profit)
+
+    # Base order
+    base_body = %{
+      "symbol" => symbol,
+      "orderQty" => quantity,
+      "side" => side,
+      "ordType" => order_type
+    }
+
+    base_body = if price && order_type == "Limit", do: Map.put(base_body, "price", price), else: base_body
+
+    # Place main order first
+    case request(settings, :post, "/api/v1/order", base_body) do
+      %{"orderID" => _order_id} = main_order ->
+        # Place stop loss if specified
+        if stop_loss do
+          sl_side = if side == "Buy", do: "Sell", else: "Buy"
+          place_stop_market_order(scope, symbol, sl_side, quantity, stop_loss)
+        end
+
+        # Place take profit if specified  
+        if take_profit do
+          tp_side = if side == "Buy", do: "Sell", else: "Buy"
+          place_limit_order(scope, symbol, tp_side, quantity, take_profit)
+        end
+
+        {:ok, main_order}
+
+      error ->
+        {:error, error}
+    end
+  end
+
+  @doc """
   Cancels all open orders for a given symbol (or all symbols if nil).
   """
   def cancel_all_orders(%Scope{} = scope, symbol \\ nil) do

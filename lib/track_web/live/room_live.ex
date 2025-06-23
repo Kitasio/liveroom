@@ -16,12 +16,18 @@ defmodule TrackWeb.RoomLive do
           order_price={@order_price}
           btc_live_price={@btc_price}
           trade_state={@trade_state}
+          order_type={@order_type}
+          position_action={@position_action}
+          limit_price={@limit_price}
+          stop_loss={@stop_loss}
+          take_profit={@take_profit}
         />
         <div class="xl:col-span-2">
           <.order_log positions={@trade_state.positions} />
         </div>
       </div>
     </div>
+    <Layouts.flash_group flash={@flash} />
     """
   end
 
@@ -43,7 +49,12 @@ defmodule TrackWeb.RoomLive do
      |> assign(:room_id, room_id)
      |> assign(:trade_state, BitmexState.new())
      |> assign(:btc_price, 0.00)
-     |> assign(:order_price, nil)}
+     |> assign(:order_price, nil)
+     |> assign(:order_type, "Market")
+     |> assign(:position_action, "Open")
+     |> assign(:limit_price, nil)
+     |> assign(:stop_loss, nil)
+     |> assign(:take_profit, nil)}
   end
 
   def handle_event("buy", _params, socket) do
@@ -52,7 +63,7 @@ defmodule TrackWeb.RoomLive do
     PubSub.broadcast!(
       Track.PubSub,
       topic,
-      {:order_executed, :buy}
+      {:order_executed, :buy, socket.assigns}
     )
 
     {:noreply, socket}
@@ -64,10 +75,30 @@ defmodule TrackWeb.RoomLive do
     PubSub.broadcast!(
       Track.PubSub,
       topic,
-      {:order_executed, :sell}
+      {:order_executed, :sell, socket.assigns}
     )
 
     {:noreply, socket}
+  end
+
+  def handle_event("update_order_type", %{"value" => order_type}, socket) do
+    {:noreply, assign(socket, :order_type, order_type)}
+  end
+
+  def handle_event("update_position_action", %{"value" => position_action}, socket) do
+    {:noreply, assign(socket, :position_action, position_action)}
+  end
+
+  def handle_event("update_limit_price", %{"limit_price" => limit_price}, socket) do
+    {:noreply, assign(socket, :limit_price, parse_number(limit_price))}
+  end
+
+  def handle_event("update_stop_loss", %{"stop_loss" => stop_loss}, socket) do
+    {:noreply, assign(socket, :stop_loss, parse_number(stop_loss))}
+  end
+
+  def handle_event("update_take_profit", %{"take_profit" => take_profit}, socket) do
+    {:noreply, assign(socket, :take_profit, parse_number(take_profit))}
   end
 
   def handle_event("update_order_price", params, socket) do
@@ -111,14 +142,20 @@ defmodule TrackWeb.RoomLive do
     {:noreply, assign(socket, btc_price: btc_price)}
   end
 
-  def handle_info({:order_executed, :buy}, socket) do
-    place_order_and_update_balance(socket, "Buy")
-    {:noreply, socket}
+  def handle_info({:order_executed, :buy, order_params}, socket) do
+    place_order_and_update_balance(socket, "Buy", order_params)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, "Executed BUY order")}
   end
 
-  def handle_info({:order_executed, :sell}, socket) do
-    place_order_and_update_balance(socket, "Sell")
-    {:noreply, socket}
+  def handle_info({:order_executed, :sell, order_params}, socket) do
+    place_order_and_update_balance(socket, "Sell", order_params)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, "Executed SELL order")}
   end
 
   def handle_info({:price_or_balance_updated, price, initiator_balance}, socket) do
@@ -140,13 +177,61 @@ defmodule TrackWeb.RoomLive do
     end
   end
 
-  defp place_order_and_update_balance(socket, side) do
-    Track.BitmexClient.place_market_order(
-      socket.assigns[:current_scope],
-      "XBTUSD",
-      side,
-      parse_number(socket.assigns[:order_price])
-    )
+  defp place_order_and_update_balance(socket, side, order_params) do
+    IO.inspect(side, label: "place_order_and_update_balance: side")
+    IO.inspect(order_params, label: "place_order_and_update_balance: order_params")
+
+    scope = socket.assigns[:current_scope]
+    symbol = "XBTUSD"
+    quantity = parse_number(socket.assigns[:order_price])
+
+    IO.inspect(scope, label: "place_order_and_update_balance: scope")
+    IO.inspect(symbol, label: "place_order_and_update_balance: symbol")
+    IO.inspect(quantity, label: "place_order_and_update_balance: quantity")
+
+    order_type = Map.get(order_params, :order_type, "Market")
+    limit_price = Map.get(order_params, :limit_price)
+    stop_loss = Map.get(order_params, :stop_loss)
+    take_profit = Map.get(order_params, :take_profit)
+
+    IO.inspect(order_type, label: "place_order_and_update_balance: order_type")
+    IO.inspect(limit_price, label: "place_order_and_update_balance: limit_price")
+    IO.inspect(stop_loss, label: "place_order_and_update_balance: stop_loss")
+    IO.inspect(take_profit, label: "place_order_and_update_balance: take_profit")
+
+    result =
+      case order_type do
+        "Market" ->
+          IO.inspect("Placing Market Order", label: "place_order_and_update_balance")
+          Track.BitmexClient.place_market_order(scope, symbol, side, quantity)
+
+        "Limit" when is_number(limit_price) ->
+          IO.inspect("Placing Limit Order", label: "place_order_and_update_balance")
+          Track.BitmexClient.place_limit_order(scope, symbol, side, quantity, limit_price)
+
+        "Stop Market" when is_number(limit_price) ->
+          IO.inspect("Placing Stop Market Order", label: "place_order_and_update_balance")
+          Track.BitmexClient.place_stop_market_order(scope, symbol, side, quantity, limit_price)
+
+        _ ->
+          IO.inspect("Placing Default Market Order", label: "place_order_and_update_balance")
+          Track.BitmexClient.place_market_order(scope, symbol, side, quantity)
+      end
+
+    IO.inspect(result, label: "place_order_and_update_balance: result")
+
+    # Handle stop loss and take profit if specified
+    if (stop_loss || take_profit) && match?({:ok, _}, result) do
+      IO.inspect("Handling Stop Loss/Take Profit", label: "place_order_and_update_balance")
+      opts = []
+      opts = if stop_loss, do: Keyword.put(opts, :stop_loss, stop_loss), else: opts
+      opts = if take_profit, do: Keyword.put(opts, :take_profit, take_profit), else: opts
+
+      if opts != [] do
+        IO.inspect(opts, label: "place_order_and_update_balance: SL/TP opts")
+        Track.BitmexClient.place_order_with_sl_tp(scope, symbol, side, quantity, opts)
+      end
+    end
 
     send(self(), :tick)
   end
