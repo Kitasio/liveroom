@@ -16,7 +16,8 @@ defmodule Track.Exchanges.BitmexState do
       margin_info: %{
         max_buy_size_usd: 0,
         max_sell_size_usd: 0
-      }
+      },
+      open_orders: []
     }
   end
 

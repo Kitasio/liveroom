@@ -23,7 +23,7 @@ defmodule TrackWeb.RoomLive do
           take_profit={@take_profit}
         />
         <div class="xl:col-span-2">
-          <.order_log positions={@trade_state.positions} open_orders={@open_orders} />
+          <.order_log positions={@trade_state.positions} open_orders={@trade_state.open_orders} />
         </div>
       </div>
     </div>
@@ -54,8 +54,7 @@ defmodule TrackWeb.RoomLive do
      |> assign(:position_action, "Open")
      |> assign(:limit_price, nil)
      |> assign(:stop_loss, nil)
-     |> assign(:take_profit, nil)
-     |> assign(:open_orders, [])}
+     |> assign(:take_profit, nil)}
   end
 
   def handle_event("buy", _params, socket) do
@@ -148,8 +147,7 @@ defmodule TrackWeb.RoomLive do
 
     {:noreply,
      socket
-     |> assign(:trade_state, updated_trade_state)
-     |> assign(:open_orders, updated_trade_state.open_orders || [])}
+     |> assign(:trade_state, updated_trade_state)}
   end
 
   def handle_info({:btc_price_updated, price}, socket) do

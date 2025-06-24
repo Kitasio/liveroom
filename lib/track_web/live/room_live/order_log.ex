@@ -108,47 +108,66 @@ defmodule TrackWeb.RoomLive.OrderLog do
   end
 
   def order_log(assigns) do
+    open_positions = Enum.filter(assigns.positions, &(&1.is_open && &1.current_qty != 0))
+
+    assigns =
+      assign(assigns,
+        open_positions: open_positions,
+        open_positions_count: Enum.count(open_positions),
+        open_orders_count: Enum.count(assigns.open_orders)
+      )
+
     ~H"""
     <div class="card bg-base-100 shadow-xl border border-base-300">
       <div class="card-body p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="card-title text-primary text-lg font-semibold">
-            <.icon name="hero-chart-bar" class="w-5 h-5" /> Open Positions
-          </h2>
-        </div>
-
-        <div class="divider my-0"></div>
-
-        <div id="order-log" class="h-80 overflow-y-auto">
+        <div role="tablist" class="tabs tabs-lifted">
+          <input
+            type="radio"
+            name="order_tabs"
+            role="tab"
+            class="tab"
+            aria-label={"Open Positions (#{@open_positions_count})"}
+            checked
+          />
           <div
-            id="empty-order-log"
-            class="only:flex hidden flex-col items-center justify-center h-full text-base-content/50"
+            role="tabpanel"
+            class="tab-content bg-base-100 border-base-300 rounded-box p-6 h-96 overflow-y-auto"
           >
-            <.icon name="hero-inbox" class="w-16 h-16 mb-4 opacity-30" />
-            <p class="text-base font-medium mb-1">No open positions</p>
-            <p class="text-sm opacity-70">Your active trades will appear here</p>
-          </div>
-
-          <div class="space-y-3">
-            <.position_component
-              :for={position <- @positions}
-              :if={position.is_open && position.current_qty != 0}
-              position={position}
-            />
-          </div>
-        </div>
-
-        <div class="mt-6">
-          <h3 class="card-title text-primary text-lg font-semibold mb-4">
-            <.icon name="hero-document-text" class="w-5 h-5" /> Active Orders
-          </h3>
-          <div class="divider my-0"></div>
-          <div class="mt-4">
-            <div :if={Enum.empty?(@open_orders)} class="text-center py-8 text-base-content/50">
-              <.icon name="hero-inbox" class="w-12 h-12 mx-auto opacity-30" />
-              <p class="mt-2 font-medium">No active orders</p>
+            <div
+              :if={@open_positions_count == 0}
+              class="flex flex-col items-center justify-center h-full text-base-content/50"
+            >
+              <.icon name="hero-inbox" class="w-16 h-16 mb-4 opacity-30" />
+              <p class="text-base font-medium mb-1">No open positions</p>
+              <p class="text-sm opacity-70">Your active trades will appear here</p>
             </div>
-            <.active_order_component :for={order <- @open_orders} order={order} />
+            <div :if={@open_positions_count > 0} class="space-y-3">
+              <.position_component :for={position <- @open_positions} position={position} />
+            </div>
+          </div>
+
+          <input
+            type="radio"
+            name="order_tabs"
+            role="tab"
+            class="tab"
+            aria-label={"Active Orders (#{@open_orders_count})"}
+          />
+          <div
+            role="tabpanel"
+            class="tab-content bg-base-100 border-base-300 rounded-box p-6 h-96 overflow-y-auto"
+          >
+            <div
+              :if={@open_orders_count == 0}
+              class="flex flex-col items-center justify-center h-full text-base-content/50"
+            >
+              <.icon name="hero-inbox" class="w-16 h-16 mb-4 opacity-30" />
+              <p class="text-base font-medium mb-1">No active orders</p>
+              <p class="text-sm opacity-70">Your active orders will appear here</p>
+            </div>
+            <div :if={@open_orders_count > 0}>
+              <.active_order_component :for={order <- @open_orders} order={order} />
+            </div>
           </div>
         </div>
       </div>
