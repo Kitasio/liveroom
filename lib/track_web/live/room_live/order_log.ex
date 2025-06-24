@@ -1,6 +1,102 @@
 defmodule TrackWeb.RoomLive.OrderLog do
-  use Phoenix.Component
-  use TrackWeb, :live_view
+  use TrackWeb, :live_component
+
+  @impl true
+  def mount(socket) do
+    {:ok, assign(socket, :active_tab, :positions)}
+  end
+
+  @impl true
+  def update(assigns, socket) do
+    open_positions = Enum.filter(assigns.positions, &(&1.is_open && &1.current_qty != 0))
+
+    socket =
+      socket
+      |> assign(assigns)
+      |> assign(
+        open_positions: open_positions,
+        open_positions_count: Enum.count(open_positions),
+        open_orders_count: Enum.count(assigns.open_orders)
+      )
+
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_event("set_active_tab", %{"tab" => "positions"}, socket) do
+    {:noreply, assign(socket, :active_tab, :positions)}
+  end
+
+  def handle_event("set_active_tab", %{"tab" => "orders"}, socket) do
+    {:noreply, assign(socket, :active_tab, :orders)}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <div class="card bg-base-100 shadow-xl border border-base-300">
+      <div class="card-body p-6">
+        <div role="tablist" class="tabs tabs-lifted">
+          <input
+            type="radio"
+            name="order_tabs"
+            role="tab"
+            class="tab"
+            aria-label={"Open Positions (#{@open_positions_count})"}
+            checked={@active_tab == :positions}
+            phx-click="set_active_tab"
+            phx-value-tab="positions"
+            phx-target={@myself}
+          />
+          <div
+            role="tabpanel"
+            class="tab-content bg-base-100 border-base-300 rounded-box p-6 h-96 overflow-y-auto"
+          >
+            <div
+              :if={@open_positions_count == 0}
+              class="flex flex-col items-center justify-center h-full text-base-content/50"
+            >
+              <.icon name="hero-inbox" class="w-16 h-16 mb-4 opacity-30" />
+              <p class="text-base font-medium mb-1">No open positions</p>
+              <p class="text-sm opacity-70">Your active trades will appear here</p>
+            </div>
+            <div :if={@open_positions_count > 0} class="space-y-3">
+              <.position_component :for={position <- @open_positions} position={position} />
+            </div>
+          </div>
+
+          <input
+            type="radio"
+            name="order_tabs"
+            role="tab"
+            class="tab"
+            aria-label={"Active Orders (#{@open_orders_count})"}
+            checked={@active_tab == :orders}
+            phx-click="set_active_tab"
+            phx-value-tab="orders"
+            phx-target={@myself}
+          />
+          <div
+            role="tabpanel"
+            class="tab-content bg-base-100 border-base-300 rounded-box p-6 h-96 overflow-y-auto"
+          >
+            <div
+              :if={@open_orders_count == 0}
+              class="flex flex-col items-center justify-center h-full text-base-content/50"
+            >
+              <.icon name="hero-inbox" class="w-16 h-16 mb-4 opacity-30" />
+              <p class="text-base font-medium mb-1">No active orders</p>
+              <p class="text-sm opacity-70">Your active orders will appear here</p>
+            </div>
+            <div :if={@open_orders_count > 0}>
+              <.active_order_component :for={order <- @open_orders} order={order} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
 
   def position_component(assigns) do
     ~H"""
@@ -100,74 +196,6 @@ defmodule TrackWeb.RoomLive.OrderLog do
           </div>
           <div :if={@order["stopPx"]}>
             Stop Price: <span class="font-mono">{@order["stopPx"]}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    """
-  end
-
-  def order_log(assigns) do
-    open_positions = Enum.filter(assigns.positions, &(&1.is_open && &1.current_qty != 0))
-
-    assigns =
-      assign(assigns,
-        open_positions: open_positions,
-        open_positions_count: Enum.count(open_positions),
-        open_orders_count: Enum.count(assigns.open_orders)
-      )
-
-    ~H"""
-    <div class="card bg-base-100 shadow-xl border border-base-300">
-      <div class="card-body p-6">
-        <div role="tablist" class="tabs tabs-lifted">
-          <input
-            type="radio"
-            name="order_tabs"
-            role="tab"
-            class="tab"
-            aria-label={"Open Positions (#{@open_positions_count})"}
-            checked
-          />
-          <div
-            role="tabpanel"
-            class="tab-content bg-base-100 border-base-300 rounded-box p-6 h-96 overflow-y-auto"
-          >
-            <div
-              :if={@open_positions_count == 0}
-              class="flex flex-col items-center justify-center h-full text-base-content/50"
-            >
-              <.icon name="hero-inbox" class="w-16 h-16 mb-4 opacity-30" />
-              <p class="text-base font-medium mb-1">No open positions</p>
-              <p class="text-sm opacity-70">Your active trades will appear here</p>
-            </div>
-            <div :if={@open_positions_count > 0} class="space-y-3">
-              <.position_component :for={position <- @open_positions} position={position} />
-            </div>
-          </div>
-
-          <input
-            type="radio"
-            name="order_tabs"
-            role="tab"
-            class="tab"
-            aria-label={"Active Orders (#{@open_orders_count})"}
-          />
-          <div
-            role="tabpanel"
-            class="tab-content bg-base-100 border-base-300 rounded-box p-6 h-96 overflow-y-auto"
-          >
-            <div
-              :if={@open_orders_count == 0}
-              class="flex flex-col items-center justify-center h-full text-base-content/50"
-            >
-              <.icon name="hero-inbox" class="w-16 h-16 mb-4 opacity-30" />
-              <p class="text-base font-medium mb-1">No active orders</p>
-              <p class="text-sm opacity-70">Your active orders will appear here</p>
-            </div>
-            <div :if={@open_orders_count > 0}>
-              <.active_order_component :for={order <- @open_orders} order={order} />
-            </div>
           </div>
         </div>
       </div>

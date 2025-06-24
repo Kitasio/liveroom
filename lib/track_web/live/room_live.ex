@@ -2,7 +2,6 @@ defmodule TrackWeb.RoomLive do
   alias Track.Exchanges.BitmexState
   use TrackWeb, :live_view
   import TrackWeb.RoomLive.TradingPanel
-  import TrackWeb.RoomLive.OrderLog
   alias Phoenix.PubSub
 
   def render(assigns) do
@@ -23,7 +22,12 @@ defmodule TrackWeb.RoomLive do
           take_profit={@take_profit}
         />
         <div class="xl:col-span-2">
-          <.order_log positions={@trade_state.positions} open_orders={@trade_state.open_orders} />
+          <.live_component
+            module={TrackWeb.RoomLive.OrderLog}
+            id="order-log"
+            positions={@trade_state.positions}
+            open_orders={@trade_state.open_orders}
+          />
         </div>
       </div>
     </div>
