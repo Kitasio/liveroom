@@ -198,13 +198,32 @@ defmodule TrackWeb.RoomLive do
     scope = socket.assigns[:current_scope]
     symbol = "XBTUSD"
     quantity = parse_number(socket.assigns[:order_price])
-
     order_type = Map.get(order_params, :order_type, "Market")
     limit_price = Map.get(order_params, :limit_price)
     stop_loss = Map.get(order_params, :stop_loss)
     take_profit = Map.get(order_params, :take_profit)
 
-    result =
+    IO.inspect(
+      %{
+        side: side,
+        order_type: order_type,
+        quantity: quantity,
+        limit_price: limit_price,
+        stop_loss: stop_loss,
+        take_profit: take_profit
+      },
+      label: "Placing Order"
+    )
+
+    if stop_loss || take_profit do
+      opts = []
+      opts = if stop_loss, do: Keyword.put(opts, :stop_loss, stop_loss), else: opts
+      opts = if take_profit, do: Keyword.put(opts, :take_profit, take_profit), else: opts
+      opts = Keyword.put(opts, :order_type, order_type)
+      opts = if limit_price, do: Keyword.put(opts, :price, limit_price), else: opts
+
+      Track.BitmexClient.place_order_with_sl_tp(scope, symbol, side, quantity, opts)
+    else
       case order_type do
         "Market" ->
           Track.BitmexClient.place_market_order(scope, symbol, side, quantity)
@@ -217,16 +236,6 @@ defmodule TrackWeb.RoomLive do
 
         _ ->
           Track.BitmexClient.place_market_order(scope, symbol, side, quantity)
-      end
-
-    # Handle stop loss and take profit if specified
-    if (stop_loss || take_profit) && match?({:ok, _}, result) do
-      opts = []
-      opts = if stop_loss, do: Keyword.put(opts, :stop_loss, stop_loss), else: opts
-      opts = if take_profit, do: Keyword.put(opts, :take_profit, take_profit), else: opts
-
-      if opts != [] do
-        Track.BitmexClient.place_order_with_sl_tp(scope, symbol, side, quantity, opts)
       end
     end
 

@@ -65,16 +65,19 @@ defmodule Track.BitmexClient do
       iex> Track.BitmexClient.place_limit_order(scope, "XBTUSD", "Buy", 100, 50000)
       {:ok, order_details}
   """
-  def place_limit_order(%Scope{} = scope, symbol, side, quantity, price) when side in ["Buy", "Sell"] do
+  def place_limit_order(%Scope{} = scope, symbol, side, quantity, price, opts \\ [])
+      when side in ["Buy", "Sell"] do
     settings = Exchanges.get_latest_bitmex_setting!(scope)
 
-    body = %{
-      "symbol" => symbol,
-      "orderQty" => quantity,
-      "side" => side,
-      "ordType" => "Limit",
-      "price" => price
-    }
+    body =
+      %{
+        "symbol" => symbol,
+        "orderQty" => quantity,
+        "side" => side,
+        "ordType" => "Limit",
+        "price" => price
+      }
+      |> Map.merge(opts_to_string_map(opts))
 
     request(settings, :post, "/api/v1/order", body)
   end
@@ -87,16 +90,46 @@ defmodule Track.BitmexClient do
       iex> Track.BitmexClient.place_stop_market_order(scope, "XBTUSD", "Buy", 100, 51000)
       {:ok, order_details}
   """
-  def place_stop_market_order(%Scope{} = scope, symbol, side, quantity, stop_px) when side in ["Buy", "Sell"] do
+  def place_stop_market_order(%Scope{} = scope, symbol, side, quantity, stop_px, opts \\ [])
+      when side in ["Buy", "Sell"] do
     settings = Exchanges.get_latest_bitmex_setting!(scope)
 
-    body = %{
-      "symbol" => symbol,
-      "orderQty" => quantity,
-      "side" => side,
-      "ordType" => "Stop",
-      "stopPx" => stop_px
-    }
+    body =
+      %{
+        "symbol" => symbol,
+        "orderQty" => quantity,
+        "side" => side,
+        "ordType" => "Stop",
+        "stopPx" => stop_px
+      }
+      |> Map.merge(opts_to_string_map(opts))
+
+    request(settings, :post, "/api/v1/order", body)
+  end
+
+  @doc """
+  Places a take profit market order for a given symbol, side, quantity, and trigger price.
+
+  This is a 'MarketIfTouched' order on BitMEX.
+
+  ## Examples
+
+      iex> Track.BitmexClient.place_take_profit_market_order(scope, "XBTUSD", "Sell", 100, 52000)
+      {:ok, order_details}
+  """
+  def place_take_profit_market_order(%Scope{} = scope, symbol, side, quantity, stop_px, opts \\ [])
+      when side in ["Buy", "Sell"] do
+    settings = Exchanges.get_latest_bitmex_setting!(scope)
+
+    body =
+      %{
+        "symbol" => symbol,
+        "orderQty" => quantity,
+        "side" => side,
+        "ordType" => "MarketIfTouched",
+        "stopPx" => stop_px
+      }
+      |> Map.merge(opts_to_string_map(opts))
 
     request(settings, :post, "/api/v1/order", body)
   end
@@ -104,13 +137,16 @@ defmodule Track.BitmexClient do
   @doc """
   Places an order with stop loss and take profit levels.
   """
-  def place_order_with_sl_tp(%Scope{} = scope, symbol, side, quantity, opts \\ []) when side in ["Buy", "Sell"] do
+  def place_order_with_sl_tp(%Scope{} = scope, symbol, side, quantity, opts \\ [])
+      when side in ["Buy", "Sell"] do
     settings = Exchanges.get_latest_bitmex_setting!(scope)
-    
+
     order_type = Keyword.get(opts, :order_type, "Market")
     price = Keyword.get(opts, :price)
     stop_loss = Keyword.get(opts, :stop_loss)
     take_profit = Keyword.get(opts, :take_profit)
+
+    IO.inspect(opts, label: "place_order_with_sl_tp opts")
 
     # Base order
     base_body = %{
@@ -120,21 +156,52 @@ defmodule Track.BitmexClient do
       "ordType" => order_type
     }
 
-    base_body = if price && order_type == "Limit", do: Map.put(base_body, "price", price), else: base_body
+    base_body =
+      if price && order_type == "Limit", do: Map.put(base_body, "price", price), else: base_body
 
     # Place main order first
     case request(settings, :post, "/api/v1/order", base_body) do
       %{"orderID" => _order_id} = main_order ->
+        # Use "Close" only if the main order is Market, which guarantees a position exists.
+        # Otherwise, just use "ReduceOnly" to avoid rejection if the Limit order isn't filled yet.
+        bracket_exec_inst = if order_type == "Market", do: "Close,ReduceOnly", else: "ReduceOnly"
+
         # Place stop loss if specified
         if stop_loss do
           sl_side = if side == "Buy", do: "Sell", else: "Buy"
-          place_stop_market_order(scope, symbol, sl_side, quantity, stop_loss)
+
+          IO.inspect(
+            %{
+              side: sl_side,
+              quantity: quantity,
+              stop_px: stop_loss,
+              execInst: bracket_exec_inst
+            },
+            label: "Placing Stop Loss Order"
+          )
+
+          place_stop_market_order(scope, symbol, sl_side, quantity, stop_loss,
+            execInst: bracket_exec_inst
+          )
         end
 
-        # Place take profit if specified  
+        # Place take profit if specified
         if take_profit do
           tp_side = if side == "Buy", do: "Sell", else: "Buy"
-          place_limit_order(scope, symbol, tp_side, quantity, take_profit)
+
+          IO.inspect(
+            %{
+              side: tp_side,
+              quantity: quantity,
+              stop_px: take_profit,
+              execInst: bracket_exec_inst
+            },
+            label: "Placing Take Profit Order"
+          )
+
+          place_take_profit_market_order(scope, symbol, tp_side, quantity, take_profit,
+            execInst: bracket_exec_inst
+          )
         end
 
         {:ok, main_order}
@@ -176,7 +243,12 @@ defmodule Track.BitmexClient do
   """
   def get_open_orders(%Scope{} = scope, symbol \\ nil) do
     settings = Exchanges.get_latest_bitmex_setting!(scope)
-    query = if symbol, do: %{"symbol" => symbol, "filter" => "{\"open\": true}"}, else: %{"filter" => "{\"open\": true}"}
+
+    query =
+      if symbol,
+        do: %{"symbol" => symbol, "filter" => "{\"open\": true}"},
+        else: %{"filter" => "{\"open\": true}"}
+
     request(settings, :get, "/api/v1/order", %{}, query)
   end
 
@@ -253,5 +325,9 @@ defmodule Track.BitmexClient do
 
     :crypto.mac(:hmac, :sha256, api_secret, data)
     |> Base.encode16(case: :lower)
+  end
+
+  defp opts_to_string_map(opts) do
+    Enum.into(opts, %{}, fn {k, v} -> {Atom.to_string(k), v} end)
   end
 end
