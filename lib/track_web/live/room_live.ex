@@ -45,14 +45,14 @@ defmodule TrackWeb.RoomLive do
     end
 
     user_id = socket.assigns[:current_scope].user.id
-    is_owner = user_id == parse_number(room_id)
+    is_owner = Decimal.new(user_id) == parse_number(room_id)
 
     {:ok,
      socket
      |> assign(:is_owner, is_owner)
      |> assign(:room_id, room_id)
      |> assign(:trade_state, BitmexState.new())
-     |> assign(:btc_price, 0.00)
+     |> assign(:btc_price, Decimal.new("0.00"))
      |> assign(:order_price, nil)
      |> assign(:order_type, "Market")
      |> assign(:position_action, "Open")
@@ -155,8 +155,12 @@ defmodule TrackWeb.RoomLive do
   end
 
   def handle_info({:btc_price_updated, price}, socket) do
-    btc_price = parse_number(price) |> Float.round(2)
-    {:noreply, assign(socket, btc_price: btc_price)}
+    with %Decimal{} = btc_price_decimal <- parse_number(price) do
+      btc_price = Decimal.round(btc_price_decimal, 2)
+      {:noreply, assign(socket, btc_price: btc_price)}
+    else
+      _ -> {:noreply, socket}
+    end
   end
 
   def handle_info({:order_executed, :buy, order_params}, socket) do
@@ -176,32 +180,49 @@ defmodule TrackWeb.RoomLive do
   end
 
   def handle_info({:price_or_balance_updated, price, initiator_balance}, socket) do
-    propotional_price =
-      socket
-      |> calculate_proportional_amount(initiator_balance, price)
-      |> ensure_multiple_of_100()
+    new_socket_with_price = calculate_proportional_amount(socket, initiator_balance, price)
+    proportional_price = ensure_multiple_of_100(new_socket_with_price)
 
-    {:noreply, assign(socket, order_price: propotional_price)}
+    {:noreply, assign(socket, order_price: proportional_price)}
   end
 
   # Helper functions
   defp ensure_multiple_of_100(socket) do
-    order_price = parse_number(socket.assigns[:order_price])
+    with %Decimal{} = order_price <- parse_number(socket.assigns.order_price) do
+      hundred = Decimal.new(100)
 
-    case round(order_price / 100) * 100 do
-      0 -> 100
-      price -> price
+      result =
+        order_price
+        |> Decimal.div(hundred)
+        |> Decimal.round(0, :half_up)
+        |> Decimal.mult(hundred)
+
+      if Decimal.compare(result, 0) == :eq do
+        hundred
+      else
+        result
+      end
+    else
+      # Default to 100 if order_price is not a valid decimal.
+      _ -> Decimal.new(100)
     end
   end
 
   defp place_order_and_update_balance(socket, side, order_params) do
     scope = socket.assigns[:current_scope]
     symbol = "XBTUSD"
-    quantity = parse_number(socket.assigns[:order_price])
+
+    quantity_decimal = parse_number(socket.assigns[:order_price]) || Decimal.new(0)
+    quantity = Decimal.to_integer(quantity_decimal)
+
     order_type = Map.get(order_params, :order_type, "Market")
-    limit_price = Map.get(order_params, :limit_price)
-    stop_loss = Map.get(order_params, :stop_loss)
-    take_profit = Map.get(order_params, :take_profit)
+    limit_price_decimal = Map.get(order_params, :limit_price)
+    stop_loss_decimal = Map.get(order_params, :stop_loss)
+    take_profit_decimal = Map.get(order_params, :take_profit)
+
+    limit_price = if limit_price_decimal, do: Decimal.to_float(limit_price_decimal)
+    stop_loss = if stop_loss_decimal, do: Decimal.to_float(stop_loss_decimal)
+    take_profit = if take_profit_decimal, do: Decimal.to_float(take_profit_decimal)
 
     IO.inspect(
       %{
@@ -245,30 +266,34 @@ defmodule TrackWeb.RoomLive do
   defp calculate_proportional_amount(socket, initiator_user_balance, amount) do
     user_balance_usd = socket.assigns[:trade_state].balance.usd
 
-    case {parse_number(user_balance_usd), parse_number(initiator_user_balance),
-          parse_number(amount)} do
-      {user_bal, init_bal, amt} when user_bal > 0 and init_bal > 0 and amt > 0 ->
-        order_price = Float.round(user_bal / init_bal * amt, 3)
-        assign(socket, order_price: order_price)
+    with %Decimal{} = user_bal <- parse_number(user_balance_usd),
+         %Decimal{} = init_bal <- parse_number(initiator_user_balance),
+         %Decimal{} = amt <- parse_number(amount),
+         true <- Decimal.compare(user_bal, 0) == :gt,
+         true <- Decimal.compare(init_bal, 0) == :gt,
+         true <- Decimal.compare(amt, 0) == :gt do
+      ratio = Decimal.div(user_bal, init_bal)
+      order_price = Decimal.mult(ratio, amt) |> Decimal.round(3)
 
+      assign(socket, order_price: order_price)
+    else
       _ ->
-        assign(socket, order_price: 0)
+        assign(socket, order_price: Decimal.new(0))
     end
   end
 
   defp parse_number(value) when is_binary(value) do
-    case Float.parse(value) do
-      {num, _} ->
-        num
-
-      :error ->
-        case Integer.parse(value) do
-          {num, _} -> num
-          :error -> 0
-        end
+    if String.trim(value) == "" do
+      nil
+    else
+      case Decimal.new(value) do
+        %Decimal{} = decimal -> decimal
+        _ -> nil
+      end
     end
   end
 
-  defp parse_number(value) when is_number(value), do: value
-  defp parse_number(_), do: 0
+  defp parse_number(value) when is_integer(value) or is_float(value), do: Decimal.new(value)
+  defp parse_number(%Decimal{} = value), do: value
+  defp parse_number(_), do: nil
 end

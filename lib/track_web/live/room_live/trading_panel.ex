@@ -3,14 +3,14 @@ defmodule TrackWeb.RoomLive.TradingPanel do
   use TrackWeb, :live_view
 
   attr :is_owner, :boolean, required: true
-  attr :order_price, :integer, required: true
-  attr :btc_live_price, :integer, required: true
+  attr :order_price, :any, required: true
+  attr :btc_live_price, :any, required: true
   attr :trade_state, :map, required: true
   attr :order_type, :string, default: "Market"
   attr :position_action, :string, default: "Open"
-  attr :limit_price, :integer, default: nil
-  attr :stop_loss, :integer, default: nil
-  attr :take_profit, :integer, default: nil
+  attr :limit_price, :any, default: nil
+  attr :stop_loss, :any, default: nil
+  attr :take_profit, :any, default: nil
 
   def trading_panel(assigns) do
     ~H"""
@@ -44,7 +44,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
     """
   end
 
-  attr :btc_live_price, :integer, required: true
+  attr :btc_live_price, :any, required: true
 
   defp panel_header(assigns) do
     ~H"""
@@ -54,7 +54,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
       </h2>
       <div class="flex items-center justify-center gap-2">
         <img class="w-4 h-4 inline" src="/images/btc.svg" />
-        <p class="text-sm">{:erlang.float_to_binary(@btc_live_price, decimals: 2)}</p>
+        <p class="text-sm">{@btc_live_price}</p>
       </div>
     </div>
     """
@@ -69,13 +69,13 @@ defmodule TrackWeb.RoomLive.TradingPanel do
       <div class="stat">
         <div class="stat-title">Balance USD</div>
         <div class="stat-value">
-          ${@trade_state.balance.usd |> Decimal.round()}
+          ${@trade_state.balance.usd |> Decimal.new() |> Decimal.round()}
         </div>
       </div>
 
       <div class="stat relative">
         <div class="stat-title">Balance BTC</div>
-        <div class="stat-value">{@trade_state.balance.btc |> Decimal.round(5)}</div>
+        <div class="stat-value">{@trade_state.balance.btc |> Decimal.new() |> Decimal.round(5)}</div>
       </div>
     </div>
     """
@@ -161,7 +161,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
   end
 
   attr :trade_state, :map, required: true
-  attr :order_price, :integer, required: true
+  attr :order_price, :any, required: true
   attr :is_owner, :boolean, required: true
 
   defp order_size_inputs(assigns) do
@@ -203,7 +203,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
   end
 
   attr :order_type, :string, required: true
-  attr :limit_price, :integer, default: nil
+  attr :limit_price, :any, default: nil
   attr :is_owner, :boolean, required: true
 
   defp limit_price_input(assigns) do
@@ -222,9 +222,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
         type="number"
         step="0.01"
         class="input input-bordered w-full"
-        placeholder={
-          if @order_type == "Limit", do: "Enter limit price", else: "Enter stop price"
-        }
+        placeholder={if @order_type == "Limit", do: "Enter limit price", else: "Enter stop price"}
         phx-change="update_limit_price"
         disabled={!@is_owner}
       />
@@ -232,7 +230,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
     """
   end
 
-  attr :stop_loss, :integer, default: nil
+  attr :stop_loss, :any, default: nil
   attr :is_owner, :boolean, required: true
 
   defp stop_loss_input(assigns) do
@@ -257,7 +255,7 @@ defmodule TrackWeb.RoomLive.TradingPanel do
     """
   end
 
-  attr :take_profit, :integer, default: nil
+  attr :take_profit, :any, default: nil
   attr :is_owner, :boolean, required: true
 
   defp take_profit_input(assigns) do
