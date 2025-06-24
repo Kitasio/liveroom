@@ -3,6 +3,7 @@ defmodule TrackWeb.RoomLive do
   use TrackWeb, :live_view
   import TrackWeb.RoomLive.TradingPanel
   alias Phoenix.PubSub
+  alias TrackWeb.Presence
 
   def render(assigns) do
     ~H"""
@@ -36,16 +37,20 @@ defmodule TrackWeb.RoomLive do
   end
 
   def mount(%{"room_id" => room_id}, _session, socket) do
+    user_id = socket.assigns[:current_scope].user.id
+    is_owner = Decimal.new(user_id) == parse_number(room_id)
+
     if connected?(socket) do
       PubSub.subscribe(Track.PubSub, "room:#{room_id}")
       PubSub.subscribe(Track.PubSub, "btc_price")
       :timer.send_interval(5_000, :tick)
 
+      if is_owner do
+        Presence.track_room(self(), room_id, %{})
+      end
+
       send(self(), :tick)
     end
-
-    user_id = socket.assigns[:current_scope].user.id
-    is_owner = Decimal.new(user_id) == parse_number(room_id)
 
     {:ok,
      socket
