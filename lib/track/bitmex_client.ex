@@ -172,6 +172,23 @@ defmodule Track.BitmexClient do
   end
 
   @doc """
+  Fetches active open orders for a given symbol (or all symbols if nil).
+  """
+  def get_open_orders(%Scope{} = scope, symbol \\ nil) do
+    settings = Exchanges.get_latest_bitmex_setting!(scope)
+    query = if symbol, do: %{"symbol" => symbol, "filter" => "{\"open\": true}"}, else: %{"filter" => "{\"open\": true}"}
+    request(settings, :get, "/api/v1/order", %{}, query)
+  end
+
+  @doc """
+  Cancels an active order by its ID.
+  """
+  def cancel_order(%Scope{} = scope, order_id) do
+    settings = Exchanges.get_latest_bitmex_setting!(scope)
+    request(settings, :delete, "/api/v1/order", %{}, %{"orderID" => order_id})
+  end
+
+  @doc """
   Closes an open position for a given symbol by placing an opposing market order.
   """
   def close_position(%Scope{} = scope, symbol) do

@@ -23,7 +23,7 @@ defmodule TrackWeb.RoomLive do
           take_profit={@take_profit}
         />
         <div class="xl:col-span-2">
-          <.order_log positions={@trade_state.positions} />
+          <.order_log positions={@trade_state.positions} open_orders={@open_orders} />
         </div>
       </div>
     </div>
@@ -54,7 +54,8 @@ defmodule TrackWeb.RoomLive do
      |> assign(:position_action, "Open")
      |> assign(:limit_price, nil)
      |> assign(:stop_loss, nil)
-     |> assign(:take_profit, nil)}
+     |> assign(:take_profit, nil)
+     |> assign(:open_orders, [])}
   end
 
   def handle_event("buy", _params, socket) do
@@ -130,11 +131,25 @@ defmodule TrackWeb.RoomLive do
     end
   end
 
+  def handle_event("cancel_order", %{"order_id" => order_id}, socket) do
+    case Track.BitmexClient.cancel_order(socket.assigns[:current_scope], order_id) do
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to cancel order: #{reason}")}
+
+      _ ->
+        send(self(), :tick)
+        {:noreply, put_flash(socket, :info, "Order canceled")}
+    end
+  end
+
   def handle_info(:tick, socket) do
     updated_trade_state =
       Track.Exchanges.get_bitmex_state(socket.assigns[:current_scope])
 
-    {:noreply, assign(socket, :trade_state, updated_trade_state)}
+    {:noreply,
+     socket
+     |> assign(:trade_state, updated_trade_state)
+     |> assign(:open_orders, updated_trade_state.open_orders || [])}
   end
 
   def handle_info({:btc_price_updated, price}, socket) do
@@ -178,57 +193,37 @@ defmodule TrackWeb.RoomLive do
   end
 
   defp place_order_and_update_balance(socket, side, order_params) do
-    IO.inspect(side, label: "place_order_and_update_balance: side")
-    IO.inspect(order_params, label: "place_order_and_update_balance: order_params")
-
     scope = socket.assigns[:current_scope]
     symbol = "XBTUSD"
     quantity = parse_number(socket.assigns[:order_price])
-
-    IO.inspect(scope, label: "place_order_and_update_balance: scope")
-    IO.inspect(symbol, label: "place_order_and_update_balance: symbol")
-    IO.inspect(quantity, label: "place_order_and_update_balance: quantity")
 
     order_type = Map.get(order_params, :order_type, "Market")
     limit_price = Map.get(order_params, :limit_price)
     stop_loss = Map.get(order_params, :stop_loss)
     take_profit = Map.get(order_params, :take_profit)
 
-    IO.inspect(order_type, label: "place_order_and_update_balance: order_type")
-    IO.inspect(limit_price, label: "place_order_and_update_balance: limit_price")
-    IO.inspect(stop_loss, label: "place_order_and_update_balance: stop_loss")
-    IO.inspect(take_profit, label: "place_order_and_update_balance: take_profit")
-
     result =
       case order_type do
         "Market" ->
-          IO.inspect("Placing Market Order", label: "place_order_and_update_balance")
           Track.BitmexClient.place_market_order(scope, symbol, side, quantity)
 
         "Limit" when is_number(limit_price) ->
-          IO.inspect("Placing Limit Order", label: "place_order_and_update_balance")
           Track.BitmexClient.place_limit_order(scope, symbol, side, quantity, limit_price)
 
         "Stop Market" when is_number(limit_price) ->
-          IO.inspect("Placing Stop Market Order", label: "place_order_and_update_balance")
           Track.BitmexClient.place_stop_market_order(scope, symbol, side, quantity, limit_price)
 
         _ ->
-          IO.inspect("Placing Default Market Order", label: "place_order_and_update_balance")
           Track.BitmexClient.place_market_order(scope, symbol, side, quantity)
       end
 
-    IO.inspect(result, label: "place_order_and_update_balance: result")
-
     # Handle stop loss and take profit if specified
     if (stop_loss || take_profit) && match?({:ok, _}, result) do
-      IO.inspect("Handling Stop Loss/Take Profit", label: "place_order_and_update_balance")
       opts = []
       opts = if stop_loss, do: Keyword.put(opts, :stop_loss, stop_loss), else: opts
       opts = if take_profit, do: Keyword.put(opts, :take_profit, take_profit), else: opts
 
       if opts != [] do
-        IO.inspect(opts, label: "place_order_and_update_balance: SL/TP opts")
         Track.BitmexClient.place_order_with_sl_tp(scope, symbol, side, quantity, opts)
       end
     end

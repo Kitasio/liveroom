@@ -1,5 +1,5 @@
 defmodule Track.Exchanges.BitmexState do
-  defstruct [:balance, :positions, :margin_info]
+  defstruct [:balance, :positions, :margin_info, :open_orders]
   alias Track.Accounts.Scope
   alias Track.BitmexClient
   alias Track.CurrencyConverter
@@ -31,6 +31,7 @@ defmodule Track.Exchanges.BitmexState do
     new()
     |> get_balance(scope)
     |> get_positions(scope, opts)
+    |> get_open_orders(scope)
     |> get_margin_info(scope)
   end
 
@@ -137,6 +138,14 @@ defmodule Track.Exchanges.BitmexState do
   end
 
   defp get_btc_price_from_state(_), do: nil
+
+  @doc """
+  Fetches active open orders and updates the state.
+  """
+  def get_open_orders(%__MODULE__{} = state, %Scope{} = scope) do
+    open_orders = BitmexClient.get_open_orders(scope)
+    Map.put(state, :open_orders, open_orders)
+  end
 
   # Private helper functions for margin calculations
 
