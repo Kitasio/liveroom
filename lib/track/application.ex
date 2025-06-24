@@ -16,7 +16,8 @@ defmodule Track.Application do
       # {Track.Worker, arg},
       # Start to serve requests, typically the last entry
       TrackWeb.Endpoint,
-      {Track.LivePriceSocket, []}
+      {Track.LivePriceSocket, []},
+      TrackWeb.Presence
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
