@@ -79,10 +79,18 @@ defmodule TrackWeb.Router do
       live "/bitmex_settings/:id/edit", BitmexSettingLive.Form, :edit
 
       live "/", PageLive
-      live "/rooms/:room_id", RoomLive
     end
 
     post "/users/update-password", UserSessionController, :update_password
+  end
+
+  scope "/rooms", TrackWeb do
+    pipe_through [:browser, :require_authenticated_user, :require_exchange_api_keys]
+
+    live_session :require_exchange_keys,
+      on_mount: [{TrackWeb.UserAuth, :require_authenticated}] do
+      live "/:room_id", RoomLive
+    end
   end
 
   scope "/", TrackWeb do

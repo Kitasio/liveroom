@@ -4,6 +4,7 @@ defmodule TrackWeb.UserAuth do
   import Plug.Conn
   import Phoenix.Controller
 
+  alias Track.Exchanges
   alias Track.Accounts
   alias Track.Accounts.Scope
 
@@ -284,4 +285,20 @@ defmodule TrackWeb.UserAuth do
   end
 
   defp maybe_store_return_to(conn), do: conn
+
+  @doc """
+  Plug for routes that require the user saved exchange API keys.
+  """
+  def require_exchange_api_keys(conn, _opts) do
+    case Exchanges.get_latest_bitmex_setting(conn.assigns.current_scope) do
+      nil ->
+        conn
+        |> put_flash(:error, "You must configure API keys.")
+        |> redirect(to: ~p"/bitmex_settings")
+        |> halt()
+
+      _ ->
+        conn
+    end
+  end
 end

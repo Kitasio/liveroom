@@ -87,6 +87,15 @@ defmodule Track.Exchanges do
     )
   end
 
+  def get_latest_bitmex_setting(%Scope{} = scope) do
+    Repo.one(
+      from bitmex_setting in BitmexSetting,
+        where: bitmex_setting.user_id == ^scope.user.id,
+        order_by: [desc: bitmex_setting.inserted_at],
+        limit: 1
+    )
+  end
+
   @doc """
   Creates a bitmex_setting.
 
