@@ -7,32 +7,33 @@ defmodule TrackWeb.RoomLive do
 
   def render(assigns) do
     ~H"""
-    <div id="screen" class="min-h-screen bg-base-200 p-4">
-      <div id="dots"></div>
-      <!-- Main Content Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <.trading_panel
-          is_owner={@is_owner}
-          order_price={@order_price}
-          btc_live_price={@btc_price}
-          trade_state={@trade_state}
-          order_type={@order_type}
-          position_action={@position_action}
-          limit_price={@limit_price}
-          stop_loss={@stop_loss}
-          take_profit={@take_profit}
-        />
-        <div class="xl:col-span-2">
-          <.live_component
-            module={TrackWeb.RoomLive.OrderLog}
-            id="order-log"
-            positions={@trade_state.positions}
-            open_orders={@trade_state.open_orders}
+    <Layouts.app flash={@flash} current_scope={@current_scope} wide={true}>
+      <div id="screen" class="min-h-screen p-4">
+        <div id="dots"></div>
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <.trading_panel
+            is_owner={@is_owner}
+            order_price={@order_price}
+            btc_live_price={@btc_price}
+            trade_state={@trade_state}
+            order_type={@order_type}
+            position_action={@position_action}
+            limit_price={@limit_price}
+            stop_loss={@stop_loss}
+            take_profit={@take_profit}
           />
+          <div class="xl:col-span-2">
+            <.live_component
+              module={TrackWeb.RoomLive.OrderLog}
+              id="order-log"
+              positions={@trade_state.positions}
+              open_orders={@trade_state.open_orders}
+            />
+          </div>
         </div>
       </div>
-    </div>
-    <Layouts.flash_group flash={@flash} />
+    </Layouts.app>
     """
   end
 

@@ -37,7 +37,6 @@ defmodule TrackWeb.Router do
   scope "/", TrackWeb do
     pipe_through :browser
 
-    live "/", PageLive
     live "/price", PriceLive
   end
 
@@ -79,6 +78,7 @@ defmodule TrackWeb.Router do
       live "/bitmex_settings/:id", BitmexSettingLive.Show, :show
       live "/bitmex_settings/:id/edit", BitmexSettingLive.Form, :edit
 
+      live "/", PageLive
       live "/rooms/:room_id", RoomLive
     end
 

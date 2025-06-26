@@ -11,37 +11,106 @@ defmodule TrackWeb.Layouts do
 
   embed_templates "layouts/*"
 
+  attr :wide, :boolean, default: false
+  attr :current_scope, :any
+  attr :flash, :any
+
+  slot :inner_block
+
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
+    <header class="navbar bg-base-100 shadow-sm">
+      <div class="navbar-start">
+        <.link href="/" class="btn btn-ghost text-xl">LiveRoom</.link>
       </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
+      <div class="navbar-end">
+        <ul class="menu menu-horizontal hidden sm:flex items-center gap-4 px-1">
+          <%= if @current_scope do %>
+            <li>
+              <span>{@current_scope.user.email}</span>
+            </li>
+            <li>
+              <.link href={~p"/rooms/#{@current_scope.user.id}"}>My room</.link>
+            </li>
+            <li>
+              <.link href={~p"/bitmex_settings"}>API Keys</.link>
+            </li>
+            <li>
+              <.link href={~p"/users/settings"}>Settings</.link>
+            </li>
+            <li>
+              <.link href={~p"/users/log-out"} method="delete">Log out</.link>
+            </li>
+          <% else %>
+            <li>
+              <.link href={~p"/users/register"}>Register</.link>
+            </li>
+            <li>
+              <.link href={~p"/users/log-in"}>Log in</.link>
+            </li>
+          <% end %>
           <li>
             <.theme_toggle />
           </li>
-          <li>
-            <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
         </ul>
+
+        <div class="flex items-center sm:hidden">
+          <div class="dropdown dropdown-end">
+            <label tabindex="0" class="btn btn-ghost">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </label>
+            <ul
+              tabindex="0"
+              class="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52 z-[1]"
+            >
+              <li class="w-fit">
+                <.theme_toggle />
+              </li>
+              <%= if @current_scope do %>
+                <li>
+                  <span class="font-semibold">{@current_scope.user.email}</span>
+                </li>
+                <li>
+                  <.link href={~p"/rooms/#{@current_scope.user.id}"}>My room</.link>
+                </li>
+                <li>
+                  <.link href={~p"/bitmex_settings"}>API Keys</.link>
+                </li>
+                <li>
+                  <.link href={~p"/users/settings"}>Settings</.link>
+                </li>
+                <li>
+                  <.link href={~p"/users/log-out"} method="delete">Log out</.link>
+                </li>
+              <% else %>
+                <li>
+                  <.link href={~p"/users/register"}>Register</.link>
+                </li>
+                <li>
+                  <.link href={~p"/users/log-in"}>Log in</.link>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        </div>
       </div>
     </header>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
+    <main class="px-4 py-8 sm:px-6 lg:px-8">
+      <div class={if @wide, do: "space-y-4", else: "mx-auto max-w-2xl space-y-4"}>
         {render_slot(@inner_block)}
       </div>
     </main>
@@ -100,19 +169,19 @@ defmodule TrackWeb.Layouts do
   """
   def theme_toggle(assigns) do
     ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
-      <div class="absolute w-[33%] h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-[33%] [[data-theme=dark]_&]:left-[66%] transition-[left]" />
-
-      <button phx-click={JS.dispatch("phx:set-theme", detail: %{theme: "system"})} class="flex p-2">
-        <.icon name="hero-computer-desktop-micro" class="size-4 opacity-75 hover:opacity-100" />
+    <div class="flex items-center rounded-full bg-base-200">
+      <button
+        phx-click={JS.dispatch("phx:set-theme", detail: %{theme: "light"})}
+        class="relative w-5 h-5 rounded-full transition-colors [[data-theme=light]_&]:bg-base-100 [[data-theme=light]_&]:shadow"
+      >
+        <.icon name="hero-sun-micro" class="absolute top-1 left-1 w-3 h-3" />
       </button>
 
-      <button phx-click={JS.dispatch("phx:set-theme", detail: %{theme: "light"})} class="flex p-2">
-        <.icon name="hero-sun-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button phx-click={JS.dispatch("phx:set-theme", detail: %{theme: "dark"})} class="flex p-2">
-        <.icon name="hero-moon-micro" class="size-4 opacity-75 hover:opacity-100" />
+      <button
+        phx-click={JS.dispatch("phx:set-theme", detail: %{theme: "dark"})}
+        class="relative w-5 h-5 rounded-full transition-colors [[data-theme=dark]_&]:bg-base-100 [[data-theme=dark]_&]:shadow"
+      >
+        <.icon name="hero-moon-micro" class="absolute top-1 left-1 w-3 h-3" />
       </button>
     </div>
     """
