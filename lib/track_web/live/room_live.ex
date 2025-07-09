@@ -92,22 +92,67 @@ defmodule TrackWeb.RoomLive do
   end
 
   def handle_event("update_order_type", %{"value" => order_type}, socket) do
+    topic = "room:#{socket.assigns[:room_id]}"
+
+    PubSub.broadcast_from!(
+      Track.PubSub,
+      self(),
+      topic,
+      {:order_type_updated, order_type}
+    )
+
     {:noreply, assign(socket, :order_type, order_type)}
   end
 
   def handle_event("update_position_action", %{"value" => position_action}, socket) do
+    topic = "room:#{socket.assigns[:room_id]}"
+
+    PubSub.broadcast_from!(
+      Track.PubSub,
+      self(),
+      topic,
+      {:position_action_updated, position_action}
+    )
+
     {:noreply, assign(socket, :position_action, position_action)}
   end
 
   def handle_event("update_limit_price", %{"limit_price" => limit_price}, socket) do
+    topic = "room:#{socket.assigns[:room_id]}"
+
+    PubSub.broadcast_from!(
+      Track.PubSub,
+      self(),
+      topic,
+      {:limit_price_updated, limit_price}
+    )
+
     {:noreply, assign(socket, :limit_price, parse_number(limit_price))}
   end
 
   def handle_event("update_stop_loss", %{"stop_loss" => stop_loss}, socket) do
+    topic = "room:#{socket.assigns[:room_id]}"
+
+    PubSub.broadcast_from!(
+      Track.PubSub,
+      self(),
+      topic,
+      {:stop_loss_updated, stop_loss}
+    )
+
     {:noreply, assign(socket, :stop_loss, parse_number(stop_loss))}
   end
 
   def handle_event("update_take_profit", %{"take_profit" => take_profit}, socket) do
+    topic = "room:#{socket.assigns[:room_id]}"
+
+    PubSub.broadcast_from!(
+      Track.PubSub,
+      self(),
+      topic,
+      {:take_profit_updated, take_profit}
+    )
+
     {:noreply, assign(socket, :take_profit, parse_number(take_profit))}
   end
 
@@ -127,28 +172,27 @@ defmodule TrackWeb.RoomLive do
   end
 
   def handle_event("close_position", %{"symbol" => symbol}, socket) do
-    case Track.BitmexClient.close_position(socket.assigns[:current_scope], symbol) do
-      {:error, reason} ->
-        # You could add a flash message here if needed
-        IO.puts("Failed to close position: #{reason}")
-        {:noreply, socket}
+    topic = "room:#{socket.assigns[:room_id]}"
 
-      _result ->
-        # Refresh the trade state after closing position
-        send(self(), :tick)
-        {:noreply, socket}
-    end
+    PubSub.broadcast!(
+      Track.PubSub,
+      topic,
+      {:close_position_requested, symbol}
+    )
+
+    {:noreply, socket}
   end
 
   def handle_event("cancel_order", %{"order_id" => order_id}, socket) do
-    case Track.BitmexClient.cancel_order(socket.assigns[:current_scope], order_id) do
-      {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to cancel order: #{reason}")}
+    topic = "room:#{socket.assigns[:room_id]}"
 
-      _ ->
-        send(self(), :tick)
-        {:noreply, put_flash(socket, :info, "Order canceled")}
-    end
+    PubSub.broadcast!(
+      Track.PubSub,
+      topic,
+      {:cancel_order_requested, order_id}
+    )
+
+    {:noreply, socket}
   end
 
   def handle_info(:tick, socket) do
@@ -190,6 +234,48 @@ defmodule TrackWeb.RoomLive do
     proportional_price = ensure_multiple_of_100(new_socket_with_price)
 
     {:noreply, assign(socket, order_price: proportional_price)}
+  end
+
+  def handle_info({:order_type_updated, order_type}, socket) do
+    {:noreply, assign(socket, :order_type, order_type)}
+  end
+
+  def handle_info({:position_action_updated, position_action}, socket) do
+    {:noreply, assign(socket, :position_action, position_action)}
+  end
+
+  def handle_info({:limit_price_updated, limit_price}, socket) do
+    {:noreply, assign(socket, :limit_price, parse_number(limit_price))}
+  end
+
+  def handle_info({:stop_loss_updated, stop_loss}, socket) do
+    {:noreply, assign(socket, :stop_loss, parse_number(stop_loss))}
+  end
+
+  def handle_info({:take_profit_updated, take_profit}, socket) do
+    {:noreply, assign(socket, :take_profit, parse_number(take_profit))}
+  end
+
+  def handle_info({:close_position_requested, symbol}, socket) do
+    case Track.BitmexClient.close_position(socket.assigns[:current_scope], symbol) do
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to close position: #{reason}")}
+
+      _result ->
+        send(self(), :tick)
+        {:noreply, put_flash(socket, :info, "Close position for #{symbol} requested.")}
+    end
+  end
+
+  def handle_info({:cancel_order_requested, order_id}, socket) do
+    case Track.BitmexClient.cancel_order(socket.assigns[:current_scope], order_id) do
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to cancel order: #{reason}")}
+
+      _ ->
+        send(self(), :tick)
+        {:noreply, put_flash(socket, :info, "Order canceled")}
+    end
   end
 
   # Helper functions
