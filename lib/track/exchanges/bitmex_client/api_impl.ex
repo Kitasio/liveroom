@@ -9,16 +9,16 @@ defmodule Track.Exchanges.BitmexClient.APIImpl do
   def get_balance(%Scope{} = scope, currency) do
     bitmex_settings = Exchanges.get_latest_bitmex_setting!(scope)
 
-    request_params = %{
-      api_key: bitmex_settings.api_key,
-      api_secret: bitmex_settings.api_secret,
-      method: :get,
-      path: "/api/v1/user/margin",
-      body: nil,
-      query: %{"currency" => currency}
-    }
+    bitmex_base_url =
+      Application.get_env(:track, :bitmex_api_base_url, "https://testnet.bitmex.com")
 
-    result = request_params |> Request.new() |> Request.send()
+    result =
+      Request.new()
+      |> Request.set_api_key(bitmex_settings.api_key)
+      |> Request.set_api_secret(bitmex_settings.api_secret)
+      |> Request.set_method(:get)
+      |> Request.set_url(bitmex_base_url <> "/api/v1/user/margin?currency=#{currency}")
+      |> Request.send()
 
     {:ok, result}
   end

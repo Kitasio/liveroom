@@ -5,9 +5,7 @@ defmodule Track.Exchanges.BitmexClient.Request do
   defstruct api_key: nil,
             api_secret: nil,
             method: nil,
-            path: nil,
-            full_url: nil,
-            query: nil,
+            url: nil,
             body: nil,
             headers: nil
 
@@ -15,18 +13,31 @@ defmodule Track.Exchanges.BitmexClient.Request do
           api_key: String.t() | nil,
           api_secret: String.t() | nil,
           method: String.t() | nil,
-          path: String.t() | nil,
-          full_url: String.t() | nil,
-          query: map() | nil,
-          body: map() | nil,
+          url: String.t() | nil,
+          body: String.t() | nil,
           headers: list() | nil
         }
-
-  @base_url "https://testnet.bitmex.com"
 
   @spec new(map()) :: t()
   def new(attrs \\ %{}) when is_map(attrs) do
     struct(Request, attrs)
+  end
+
+  def set_api_key(%Request{} = req, api_key) when is_binary(api_key),
+    do: %Request{req | api_key: api_key}
+
+  def set_api_secret(%Request{} = req, api_secret) when is_binary(api_secret),
+    do: %Request{req | api_secret: api_secret}
+
+  def set_method(%Request{} = req, method) when method in [:get, :post, :put, :patch, :delete],
+    do: %Request{req | method: method}
+
+  def set_and_encode_body(%Request{} = req, body) when is_map(body) do
+    %Request{req | body: Jason.encode!(body)}
+  end
+
+  def set_url(%Request{} = req, url) when is_binary(url) do
+    %Request{req | url: url}
   end
 
   def send(%Request{} = request) do
@@ -41,35 +52,15 @@ defmodule Track.Exchanges.BitmexClient.Request do
 
   defp process_request(%Request{} = req) do
     req
-    |> encode_body()
-    |> encode_query()
-    |> create_full_url()
     |> create_headers()
     |> send_request()
     |> Map.get(:body)
     |> decode_result()
   end
 
-  defp validate_request(%Request{api_key: nil}), do: {:error, :missing_api_key}
-  defp validate_request(req), do: {:ok, req}
-
-  defp encode_body(%Request{} = req) do
-    if req.method in [:post, :put], do: %Request{req | body: Jason.encode!(req.body)}, else: req
-  end
-
-  defp encode_query(%Request{} = req), do: %Request{req | query: URI.encode_query(req.query)}
-
-  defp create_full_url(%Request{} = req) do
-    url = (@base_url <> req.path) |> append_query(req.query)
-
-    %Request{req | full_url: url}
-  end
-
-  defp append_query(url, query) do
-    if query,
-      do: "#{url}?#{query}",
-      else: url
-  end
+  def validate_request(%Request{api_key: nil}), do: {:error, :missing_api_key}
+  def validate_request(%Request{api_secret: nil}), do: {:error, :missing_api_secret}
+  def validate_request(req), do: {:ok, req}
 
   defp create_headers(%Request{} = req) do
     expires = :os.system_time(:second) + 60
@@ -87,7 +78,7 @@ defmodule Track.Exchanges.BitmexClient.Request do
   defp send_request(%Request{} = req) do
     Req.request!(
       method: req.method,
-      url: req.full_url,
+      url: req.url,
       headers: req.headers,
       body: req.body
     )
@@ -96,9 +87,17 @@ defmodule Track.Exchanges.BitmexClient.Request do
   defp decode_result(body) when is_binary(body), do: Jason.decode!(body)
   defp decode_result(body), do: body
 
+  defp append_query(url, query) do
+    if query,
+      do: "#{url}?#{query}",
+      else: url
+  end
+
   defp sign_request(%Request{} = req, expires) do
+    parsed_url = URI.parse(req.url)
+
     data =
-      "#{req.method |> to_string() |> String.upcase()}#{append_query(req.path, req.query)}#{expires}#{req.body}"
+      "#{req.method |> to_string() |> String.upcase()}#{append_query(parsed_url.path, parsed_url.query)}#{expires}#{req.body}"
 
     :crypto.mac(:hmac, :sha256, req.api_secret, data)
     |> Base.encode16(case: :lower)
