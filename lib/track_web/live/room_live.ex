@@ -10,6 +10,7 @@ defmodule TrackWeb.RoomLive do
     <Layouts.app flash={@flash} current_scope={@current_scope} wide={true}>
       <div id="screen" class="min-h-screen p-4">
         <div id="dots"></div>
+        <div>{@copying_status}</div>
         <!-- Main Content Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <.trading_panel
@@ -23,7 +24,13 @@ defmodule TrackWeb.RoomLive do
             stop_loss={@stop_loss}
             take_profit={@take_profit}
           />
-          <div class="xl:col-span-2">
+          <div class="xl:col-span-2 space-y-6">
+            <.copy_controls
+              is_owner={@is_owner}
+              copying_status={@copying_status}
+              owner_has_open_positions={@owner_has_open_positions}
+            />
+
             <.live_component
               module={TrackWeb.RoomLive.OrderLog}
               id="order-log"
@@ -34,6 +41,31 @@ defmodule TrackWeb.RoomLive do
         </div>
       </div>
     </Layouts.app>
+    """
+  end
+
+  defp copy_controls(assigns) do
+    ~H"""
+    <div :if={!@is_owner}>
+      <div :if={@copying_status == :spectating} class="p-4 rounded-lg text-center">
+        <h3 class="text-lg font-semibold mb-2">You are currently spectating.</h3>
+        <p class="mb-4">You can start copying the owner's trades at any time.</p>
+        <div class="flex justify-center space-x-4">
+          <button phx-click="start_copying_now" class="btn btn-primary">Start Copying Now</button>
+          <button phx-click="wait_to_copy" class="btn btn-secondary">
+            Copy When Positions are Closed
+          </button>
+        </div>
+      </div>
+
+      <div :if={@copying_status == :waiting_to_copy} class="p-4 rounded-lg text-center">
+        <p class="text-lg">Waiting for current trades to close before copying...</p>
+      </div>
+
+      <div :if={@copying_status == :copying} class="p-4 rounded-lg text-center">
+        <p class="text-lg text-green-400">✅ You are now copy trading.</p>
+      </div>
+    </div>
     """
   end
 
@@ -53,6 +85,8 @@ defmodule TrackWeb.RoomLive do
       send(self(), :tick)
     end
 
+    copying_status = if is_owner, do: :owner, else: :spectating
+
     {:ok,
      socket
      |> assign(:is_owner, is_owner)
@@ -64,7 +98,10 @@ defmodule TrackWeb.RoomLive do
      |> assign(:position_action, "Open")
      |> assign(:limit_price, nil)
      |> assign(:stop_loss, nil)
-     |> assign(:take_profit, nil)}
+     |> assign(:take_profit, nil)
+     |> assign(:copying_status, copying_status)
+     |> assign(:owner_trade_state, BitmexState.new())
+     |> assign(:owner_has_open_positions, false)}
   end
 
   def handle_event("buy", _params, socket) do
@@ -195,9 +232,29 @@ defmodule TrackWeb.RoomLive do
     {:noreply, socket}
   end
 
+  def handle_event("start_copying_now", _params, socket) do
+    {:noreply, assign(socket, :copying_status, :copying)}
+  end
+
+  def handle_event("wait_to_copy", _params, socket) do
+    if socket.assigns.owner_has_open_positions do
+      {:noreply, assign(socket, :copying_status, :waiting_to_copy)}
+    else
+      {:noreply, assign(socket, :copying_status, :copying)}
+    end
+  end
+
   def handle_info(:tick, socket) do
     updated_trade_state =
       Track.Exchanges.get_bitmex_state(socket.assigns[:current_scope])
+
+    if socket.assigns.is_owner do
+      PubSub.broadcast!(
+        Track.PubSub,
+        "room:#{socket.assigns[:room_id]}",
+        {:owner_state_updated, updated_trade_state}
+      )
+    end
 
     {:noreply,
      socket
@@ -213,27 +270,58 @@ defmodule TrackWeb.RoomLive do
     end
   end
 
-  def handle_info({:order_executed, :buy, order_params}, socket) do
-    place_order_and_update_balance(socket, "Buy", order_params)
+  def handle_info({:owner_state_updated, owner_trade_state}, socket) do
+    owner_has_open_positions =
+      owner_trade_state.positions |> Enum.any?(fn p -> p.is_open end)
 
-    {:noreply,
-     socket
-     |> put_flash(:info, "Executed BUY order")}
+    IO.inspect(owner_trade_state.positions, label: "POSITIONS")
+    IO.inspect(owner_has_open_positions, label: "OWNER HAS OPEN POS")
+
+    socket =
+      socket
+      |> assign(:owner_trade_state, owner_trade_state)
+      |> assign(:owner_has_open_positions, owner_has_open_positions)
+
+    if socket.assigns.copying_status == :waiting_to_copy and not owner_has_open_positions do
+      {:noreply, assign(socket, :copying_status, :copying)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:order_executed, :buy, order_params}, socket) do
+    if can_trade?(socket) do
+      place_order_and_update_balance(socket, "Buy", order_params)
+
+      {:noreply,
+       socket
+       |> put_flash(:info, "Executed BUY order")}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info({:order_executed, :sell, order_params}, socket) do
-    place_order_and_update_balance(socket, "Sell", order_params)
+    if can_trade?(socket) do
+      place_order_and_update_balance(socket, "Sell", order_params)
 
-    {:noreply,
-     socket
-     |> put_flash(:info, "Executed SELL order")}
+      {:noreply,
+       socket
+       |> put_flash(:info, "Executed SELL order")}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info({:price_or_balance_updated, price, initiator_balance}, socket) do
-    new_socket_with_price = calculate_proportional_amount(socket, initiator_balance, price)
-    proportional_price = ensure_multiple_of_100(new_socket_with_price)
+    if can_trade?(socket) do
+      new_socket_with_price = calculate_proportional_amount(socket, initiator_balance, price)
+      proportional_price = ensure_multiple_of_100(new_socket_with_price)
 
-    {:noreply, assign(socket, order_price: proportional_price)}
+      {:noreply, assign(socket, order_price: proportional_price)}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info({:order_type_updated, order_type}, socket) do
@@ -257,28 +345,40 @@ defmodule TrackWeb.RoomLive do
   end
 
   def handle_info({:close_position_requested, symbol}, socket) do
-    case Track.BitmexClient.close_position(socket.assigns[:current_scope], symbol) do
-      {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to close position: #{reason}")}
+    if can_trade?(socket) do
+      case Track.BitmexClient.close_position(socket.assigns[:current_scope], symbol) do
+        {:error, reason} ->
+          {:noreply, put_flash(socket, :error, "Failed to close position: #{reason}")}
 
-      _result ->
-        send(self(), :tick)
-        {:noreply, put_flash(socket, :info, "Close position for #{symbol} requested.")}
+        _result ->
+          send(self(), :tick)
+          {:noreply, put_flash(socket, :info, "Close position for #{symbol} requested.")}
+      end
+    else
+      {:noreply, socket}
     end
   end
 
   def handle_info({:cancel_order_requested, order_id}, socket) do
-    case Track.BitmexClient.cancel_order(socket.assigns[:current_scope], order_id) do
-      {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to cancel order: #{reason}")}
+    if can_trade?(socket) do
+      case Track.BitmexClient.cancel_order(socket.assigns[:current_scope], order_id) do
+        {:error, reason} ->
+          {:noreply, put_flash(socket, :error, "Failed to cancel order: #{reason}")}
 
-      _ ->
-        send(self(), :tick)
-        {:noreply, put_flash(socket, :info, "Order canceled")}
+        _ ->
+          send(self(), :tick)
+          {:noreply, put_flash(socket, :info, "Order canceled")}
+      end
+    else
+      {:noreply, socket}
     end
   end
 
   # Helper functions
+  defp can_trade?(socket) do
+    socket.assigns.copying_status in [:owner, :copying]
+  end
+
   defp ensure_multiple_of_100(socket) do
     with %Decimal{} = order_price <- parse_number(socket.assigns.order_price) do
       hundred = Decimal.new(100)

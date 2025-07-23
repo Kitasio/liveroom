@@ -117,7 +117,14 @@ defmodule Track.BitmexClient do
       iex> Track.BitmexClient.place_take_profit_market_order(scope, "XBTUSD", "Sell", 100, 52000)
       {:ok, order_details}
   """
-  def place_take_profit_market_order(%Scope{} = scope, symbol, side, quantity, stop_px, opts \\ [])
+  def place_take_profit_market_order(
+        %Scope{} = scope,
+        symbol,
+        side,
+        quantity,
+        stop_px,
+        opts \\ []
+      )
       when side in ["Buy", "Sell"] do
     settings = Exchanges.get_latest_bitmex_setting!(scope)
 
@@ -287,6 +294,10 @@ defmodule Track.BitmexClient do
 
   # Internal
 
+  # Possible smells:
+  # 1. Long Parameter List
+  # 2. Data Clumps?
+  # 3. Primitive Obsession?
   defp request(%BitmexSetting{} = bitmex_setting, method, path, body \\ %{}, query) do
     api_key = bitmex_setting.api_key
     api_secret = bitmex_setting.api_secret
@@ -307,6 +318,8 @@ defmodule Track.BitmexClient do
       {"content-type", "application/json"}
     ]
 
+    IO.inspect(headers, label: "HEADERS")
+
     Req.request!(
       method: method,
       url: @base_url <> full_path,
@@ -321,7 +334,9 @@ defmodule Track.BitmexClient do
   defp decode_result(body), do: body
 
   defp sign_request(api_secret, verb, path, expires, body) do
+    IO.inspect({api_secret, verb, path, expires, body}, label: "PARAMS")
     data = "#{verb |> to_string() |> String.upcase()}#{path}#{expires}#{body}"
+    IO.inspect(data, label: "DATA")
 
     :crypto.mac(:hmac, :sha256, api_secret, data)
     |> Base.encode16(case: :lower)

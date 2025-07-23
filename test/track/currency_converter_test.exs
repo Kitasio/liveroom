@@ -2,7 +2,6 @@ defmodule Track.CurrencyConverterTest do
   use ExUnit.Case, async: true
 
   alias Track.CurrencyConverter
-  import Decimal # Need this for Decimal.new and Decimal.compare
 
   # Helper to compare string representations numerically
   defp assert_numeric_equal(actual_str, expected_str) do
