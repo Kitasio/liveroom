@@ -60,6 +60,8 @@ defmodule Track.Exchanges.BitmexClient.Request do
 
   def validate_request(%Request{api_key: nil}), do: {:error, :missing_api_key}
   def validate_request(%Request{api_secret: nil}), do: {:error, :missing_api_secret}
+  def validate_request(%Request{method: nil}), do: {:error, :missing_method}
+  def validate_request(%Request{url: nil}), do: {:error, :missing_url}
   def validate_request(req), do: {:ok, req}
 
   defp create_headers(%Request{} = req) do

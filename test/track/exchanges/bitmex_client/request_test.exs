@@ -21,6 +21,16 @@ defmodule Track.Exchanges.BitmexClient.RequestTest do
       req_without_api_key = %Request{@sample_request | api_secret: nil}
       assert Request.validate_request(req_without_api_key) == {:error, :missing_api_secret}
     end
+
+    test "empty method returns an error" do
+      req_without_method = %Request{@sample_request | method: nil}
+      assert Request.validate_request(req_without_method) == {:error, :missing_method}
+    end
+
+    test "empty url returns an error" do
+      req_without_url = %Request{@sample_request | url: nil}
+      assert Request.validate_request(req_without_url) == {:error, :missing_url}
+    end
   end
 
   describe "setters" do
