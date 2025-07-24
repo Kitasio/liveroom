@@ -59,4 +59,47 @@ defmodule Track.Exchanges.BitmexClient.APIImplTest do
               }
             ]} == APIImpl.get_balance(scope, currency)
   end
+
+  test "get_instrument/2 makes a correct request and handles the response", %{bypass: bypass} do
+    scope = user_scope_fixture()
+    bitmex_setting = bitmex_setting_fixture(scope)
+
+    # Configure the application to use the bypass URL for this test
+    base_url = "http://localhost:#{bypass.port}"
+    Application.put_env(:track, :bitmex_api_base_url, base_url)
+
+    symbol = "XBTUSD"
+    path = "/api/v1/instrument"
+    query = "symbol=#{symbol}"
+
+    expected_response_body = """
+    [
+      {
+        "lastPrice": 1234
+      }
+    ]
+    """
+
+    Bypass.expect_once(bypass, "GET", path, fn conn ->
+      assert conn.query_string == query
+
+      api_key_header = Plug.Conn.get_req_header(conn, "api-key")
+      assert api_key_header == [bitmex_setting.api_key]
+
+      api_expires_header = Plug.Conn.get_req_header(conn, "api-expires")
+      assert api_expires_header != []
+
+      api_signature_header = Plug.Conn.get_req_header(conn, "api-signature")
+      assert api_signature_header != []
+
+      Plug.Conn.resp(conn, 200, expected_response_body)
+    end)
+
+    assert {:ok,
+            [
+              %{
+                "lastPrice" => 1234
+              }
+            ]} == APIImpl.get_instrument(scope, symbol)
+  end
 end
