@@ -42,6 +42,13 @@ defmodule Track.Exchanges.BitmexState do
   Fetches the user's margin balance and instrument price and updates the state.
   """
   def get_balance(%__MODULE__{} = state, %Scope{} = scope) do
+    {sats_int, btc_price_float} = get_balance_and_price(scope)
+    {btc_string, usd_string} = convert_currencies(sats_int, btc_price_float)
+
+    Map.put(state, :balance, %{usd: usd_string, sats: to_string(sats_int), btc: btc_string})
+  end
+
+  defp get_balance_and_price(scope) do
     tasks = [
       fn -> Margin.get_user_balance(scope, "XBt") end,
       fn -> Instrument.get_instrument(scope) end
@@ -57,12 +64,13 @@ defmodule Track.Exchanges.BitmexState do
     # btc_price_float is float
     {:ok, [%{last_price: btc_price_float} | _tail]} = instrument_result
 
-    # Use CurrencyConverter to perform conversions and get string values
-    sats_string = sats_int |> to_string()
-    btc_string = CurrencyConverter.sats_to_btc(sats_int)
-    usd_string = CurrencyConverter.sats_to_usd(sats_int, btc_price_float)
+    {sats_int, btc_price_float}
+  end
 
-    Map.put(state, :balance, %{usd: usd_string, sats: sats_string, btc: btc_string})
+  defp convert_currencies(sats, btc_price) do
+    btc_string = CurrencyConverter.sats_to_btc(sats)
+    usd_string = CurrencyConverter.sats_to_usd(sats, btc_price)
+    {btc_string, usd_string}
   end
 
   def get_positions(%__MODULE__{} = state, %Scope{} = scope, opts \\ []) do
