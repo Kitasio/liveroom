@@ -42,7 +42,16 @@ defmodule Track.Exchanges.BitmexClient.Request do
 
   def send(%Request{} = request) do
     with {:ok, req} <- validate_request(request) do
-      process_request(req)
+      try do
+        {:ok, process_request(req)}
+      rescue
+        e ->
+          Logger.error(Exception.format(:error, e, __STACKTRACE__),
+            label: "Failed to send request"
+          )
+
+          {:error, e}
+      end
     else
       {:error, reason} ->
         Logger.error(reason, label: "Failed to send request")
