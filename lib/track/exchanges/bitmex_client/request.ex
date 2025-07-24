@@ -42,16 +42,7 @@ defmodule Track.Exchanges.BitmexClient.Request do
 
   def send(%Request{} = request) do
     with {:ok, req} <- validate_request(request) do
-      try do
-        {:ok, process_request(req)}
-      rescue
-        e ->
-          Logger.error(Exception.format(:error, e, __STACKTRACE__),
-            label: "Failed to send request"
-          )
-
-          {:error, e}
-      end
+      process_request(req)
     else
       {:error, reason} ->
         Logger.error(reason, label: "Failed to send request")
@@ -60,11 +51,16 @@ defmodule Track.Exchanges.BitmexClient.Request do
   end
 
   defp process_request(%Request{} = req) do
-    req
-    |> create_headers()
-    |> send_request()
-    |> Map.get(:body)
-    |> decode_result()
+    response =
+      req
+      |> create_headers()
+      |> send_request()
+
+    if response.status in 200..299 do
+      {:ok, decode_result(response.body)}
+    else
+      {:error, {:http_error, response.status}}
+    end
   end
 
   def validate_request(%Request{api_key: nil}), do: {:error, :missing_api_key}
