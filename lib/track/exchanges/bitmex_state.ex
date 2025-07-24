@@ -1,5 +1,7 @@
 defmodule Track.Exchanges.BitmexState do
   defstruct [:balance, :positions, :margin_info, :open_orders]
+  alias Track.Exchanges.BitmexClient.Instrument
+  alias Track.Exchanges.BitmexClient.Margin
   alias Track.Accounts.Scope
   alias Track.BitmexClient
   alias Track.CurrencyConverter
@@ -41,8 +43,8 @@ defmodule Track.Exchanges.BitmexState do
   """
   def get_balance(%__MODULE__{} = state, %Scope{} = scope) do
     tasks = [
-      fn -> BitmexClient.get_balance(scope) end,
-      fn -> BitmexClient.get_instrument(scope) end
+      fn -> Margin.get_user_balance(scope, "XBt") end,
+      fn -> Instrument.get_instrument(scope) end
     ]
 
     [balance_result, instrument_result] =
@@ -51,9 +53,9 @@ defmodule Track.Exchanges.BitmexState do
       |> Enum.map(fn {:ok, result} -> result end)
 
     # sats_int is integer
-    %{"amount" => sats_int} = balance_result |> hd()
+    {:ok, [%{amount: sats_int} | _tail]} = balance_result
     # btc_price_float is float
-    %{"lastPrice" => btc_price_float} = instrument_result |> hd()
+    {:ok, [%{last_price: btc_price_float} | _tail]} = instrument_result
 
     # Use CurrencyConverter to perform conversions and get string values
     sats_string = sats_int |> to_string()
