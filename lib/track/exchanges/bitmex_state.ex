@@ -42,10 +42,13 @@ defmodule Track.Exchanges.BitmexState do
   Fetches the user's margin balance and instrument price and updates the state.
   """
   def get_balance(%__MODULE__{} = state, %Scope{} = scope) do
-    {sats_int, btc_price_float} = get_balance_and_price(scope)
-    {btc_string, usd_string} = convert_currencies(sats_int, btc_price_float)
+    {sats_balance, btc_price} = get_balance_and_price(scope)
 
-    Map.put(state, :balance, %{usd: usd_string, sats: to_string(sats_int), btc: btc_string})
+    Map.put(state, :balance, %{
+      usd: CurrencyConverter.sats_to_usd(sats_balance, btc_price),
+      sats: to_string(sats_balance),
+      btc: CurrencyConverter.sats_to_btc(sats_balance)
+    })
   end
 
   defp get_balance_and_price(scope) do
@@ -59,18 +62,10 @@ defmodule Track.Exchanges.BitmexState do
       |> Task.async_stream(& &1.(), timeout: 10_000)
       |> Enum.map(fn {:ok, result} -> result end)
 
-    # sats_int is integer
     {:ok, [%{amount: sats_int} | _tail]} = balance_result
-    # btc_price_float is float
     {:ok, [%{last_price: btc_price_float} | _tail]} = instrument_result
 
     {sats_int, btc_price_float}
-  end
-
-  defp convert_currencies(sats, btc_price) do
-    btc_string = CurrencyConverter.sats_to_btc(sats)
-    usd_string = CurrencyConverter.sats_to_usd(sats, btc_price)
-    {btc_string, usd_string}
   end
 
   def get_positions(%__MODULE__{} = state, %Scope{} = scope, opts \\ []) do
