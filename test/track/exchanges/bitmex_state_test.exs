@@ -21,6 +21,8 @@ defmodule Track.Exchanges.BitmexStateTest do
     open_orders: []
   }
 
+  @valid_fetch_balance_response %{sats: "18583", btc: "0.00018583", usd: "16.91034417"}
+
   test "gets and sets balance for the state" do
     Track.Exchanges.BitmexClient.MockAPI
     |> expect(:get_instrument, fn _scope, _symbol -> @valid_get_instrument_api_response end)
@@ -28,5 +30,13 @@ defmodule Track.Exchanges.BitmexStateTest do
 
     assert BitmexState.new() |> BitmexState.get_balance(user_scope_fixture()) ==
              @valid_state_get_balance_result
+  end
+
+  test "fetches user balance" do
+    Track.Exchanges.BitmexClient.MockAPI
+    |> expect(:get_instrument, fn _scope, _symbol -> @valid_get_instrument_api_response end)
+    |> expect(:get_balance, fn _scope, _currency -> @valid_get_balance_api_response end)
+
+    assert BitmexState.fetch_balance(user_scope_fixture()) == @valid_fetch_balance_response
   end
 end

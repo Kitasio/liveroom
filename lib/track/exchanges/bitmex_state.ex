@@ -24,6 +24,27 @@ defmodule Track.Exchanges.BitmexState do
   end
 
   @doc """
+  Fetches user balance from Bitmex API
+
+  Converts to different currencies using fetched BTC price
+
+  ## Examples
+
+      iex> Track.Exchanges.BitmexState.fetch_balance(scope)
+      %{sats: "18583", btc: "0.00018583", usd: "22.071530841"
+
+  """
+  def fetch_balance(%Scope{} = scope) do
+    {sats_balance, btc_price} = fetch_balance_and_price(scope)
+
+    %{
+      usd: CurrencyConverter.sats_to_usd(sats_balance, btc_price),
+      sats: to_string(sats_balance),
+      btc: CurrencyConverter.sats_to_btc(sats_balance)
+    }
+  end
+
+  @doc """
   Fetches the latest Bitmex state (balance, positions, margin info) for a given scope.
 
   Options:
@@ -42,7 +63,7 @@ defmodule Track.Exchanges.BitmexState do
   Fetches the user's margin balance and instrument price and updates the state.
   """
   def get_balance(%__MODULE__{} = state, %Scope{} = scope) do
-    {sats_balance, btc_price} = get_balance_and_price(scope)
+    {sats_balance, btc_price} = fetch_balance_and_price(scope)
 
     Map.put(state, :balance, %{
       usd: CurrencyConverter.sats_to_usd(sats_balance, btc_price),
@@ -51,7 +72,7 @@ defmodule Track.Exchanges.BitmexState do
     })
   end
 
-  defp get_balance_and_price(scope) do
+  defp fetch_balance_and_price(scope) do
     tasks = [
       fn -> Margin.get_user_balance(scope, "XBt") end,
       fn -> Instrument.get_instrument(scope) end
