@@ -1,8 +1,6 @@
 defmodule Track.Exchanges.BitmexState do
   defstruct [:balance, :positions, :margin_info, :open_orders]
   alias Track.Exchanges.BitmexState.Balance
-  alias Track.Exchanges.BitmexClient.Instrument
-  alias Track.Exchanges.BitmexClient.Margin
   alias Track.Accounts.Scope
   alias Track.BitmexClient
   alias Track.CurrencyConverter
@@ -32,41 +30,13 @@ defmodule Track.Exchanges.BitmexState do
       from the API even if it's available in the state's balance. Defaults to false.
   """
   def get_state(%Scope{} = scope, opts \\ []) do
+    balance = Balance.fetch_balance(scope)
+
     new()
-    |> get_balance(scope)
+    |> set_balance(balance)
     |> get_positions(scope, opts)
     |> get_open_orders(scope)
     |> get_margin_info(scope)
-  end
-
-  @doc """
-  Fetches the user's margin balance and instrument price and updates the state.
-  """
-  def get_balance(%__MODULE__{} = state, %Scope{} = scope) do
-    {sats_balance, btc_price} = fetch_balance_and_price(scope)
-
-    Map.put(state, :balance, %{
-      usd: CurrencyConverter.sats_to_usd(sats_balance, btc_price),
-      sats: to_string(sats_balance),
-      btc: CurrencyConverter.sats_to_btc(sats_balance)
-    })
-  end
-
-  defp fetch_balance_and_price(scope) do
-    tasks = [
-      fn -> Margin.get_user_balance(scope, "XBt") end,
-      fn -> Instrument.get_instrument(scope) end
-    ]
-
-    [balance_result, instrument_result] =
-      tasks
-      |> Task.async_stream(& &1.(), timeout: 10_000)
-      |> Enum.map(fn {:ok, result} -> result end)
-
-    {:ok, [%{amount: sats_int} | _tail]} = balance_result
-    {:ok, [%{last_price: btc_price_float} | _tail]} = instrument_result
-
-    {sats_int, btc_price_float}
   end
 
   def get_positions(%__MODULE__{} = state, %Scope{} = scope, opts \\ []) do
