@@ -1,5 +1,6 @@
 defmodule Track.Exchanges.BitmexState do
   defstruct [:balance, :positions, :margin_info, :open_orders]
+  alias Track.Exchanges.BitmexState.Balance
   alias Track.Exchanges.BitmexClient.Instrument
   alias Track.Exchanges.BitmexClient.Margin
   alias Track.Accounts.Scope
@@ -9,11 +10,7 @@ defmodule Track.Exchanges.BitmexState do
 
   def new() do
     %__MODULE__{
-      balance: %{
-        usd: 0,
-        sats: 0,
-        btc: 0
-      },
+      balance: Balance.new(),
       positions: [],
       margin_info: %{
         max_buy_size_usd: 0,
@@ -23,25 +20,8 @@ defmodule Track.Exchanges.BitmexState do
     }
   end
 
-  @doc """
-  Fetches user balance from Bitmex API
-
-  Converts to different currencies using fetched BTC price
-
-  ## Examples
-
-      iex> Track.Exchanges.BitmexState.fetch_balance(scope)
-      %{sats: "18583", btc: "0.00018583", usd: "22.071530841"
-
-  """
-  def fetch_balance(%Scope{} = scope) do
-    {sats_balance, btc_price} = fetch_balance_and_price(scope)
-
-    %{
-      usd: CurrencyConverter.sats_to_usd(sats_balance, btc_price),
-      sats: to_string(sats_balance),
-      btc: CurrencyConverter.sats_to_btc(sats_balance)
-    }
+  def set_balance(%__MODULE__{} = state, %Balance{} = balance) do
+    %__MODULE__{state | balance: balance}
   end
 
   @doc """
