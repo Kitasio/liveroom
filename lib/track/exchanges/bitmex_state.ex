@@ -29,7 +29,7 @@ defmodule Track.Exchanges.BitmexState do
     - `:force_fetch_price` (boolean): If true, forces fetching the BTC price
       from the API even if it's available in the state's balance. Defaults to false.
   """
-  def get_state(%Scope{} = scope, opts \\ []) do
+  def fetch_state(%Scope{} = scope, opts \\ []) do
     balance = Balance.fetch_balance(scope)
 
     new()

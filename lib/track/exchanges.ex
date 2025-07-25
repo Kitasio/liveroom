@@ -179,7 +179,7 @@ defmodule Track.Exchanges do
     BitmexSetting.changeset(bitmex_setting, attrs, scope)
   end
 
-  def get_bitmex_state(%Scope{} = scope) do
-    BitmexState.get_state(scope)
+  def fetch_bitmex_state(%Scope{} = scope) do
+    BitmexState.fetch_state(scope)
   end
 end

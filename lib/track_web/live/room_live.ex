@@ -246,7 +246,7 @@ defmodule TrackWeb.RoomLive do
 
   def handle_info(:tick, socket) do
     updated_trade_state =
-      Track.Exchanges.get_bitmex_state(socket.assigns[:current_scope])
+      Track.Exchanges.fetch_bitmex_state(socket.assigns[:current_scope])
 
     if socket.assigns.is_owner do
       PubSub.broadcast!(
