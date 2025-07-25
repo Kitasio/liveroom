@@ -18,6 +18,34 @@ defmodule Track.Exchanges.BitmexState.BalanceTest do
 
   @valid_fetch_balance_response %Balance{sats: "18583", btc: "0.00018583", usd: "16.91034417"}
 
+  test "new/0 stores currencies as strings" do
+    assert Balance.new() == %Balance{usd: "0", sats: "0", btc: "0"}
+  end
+
+  describe "update_usd/2" do
+    test "updates the usd value" do
+      balance = Balance.new()
+      updated_balance = Balance.update_usd(balance, "100.00")
+      assert updated_balance.usd == "100.00"
+    end
+  end
+
+  describe "update_sats/2" do
+    test "updates the sats value" do
+      balance = Balance.new()
+      updated_balance = Balance.update_sats(balance, "100000")
+      assert updated_balance.sats == "100000"
+    end
+  end
+
+  describe "update_btc/2" do
+    test "updates the btc value" do
+      balance = Balance.new()
+      updated_balance = Balance.update_btc(balance, "1.0")
+      assert updated_balance.btc == "1.0"
+    end
+  end
+
   test "fetches user balance" do
     Track.Exchanges.BitmexClient.MockAPI
     |> expect(:get_instrument, fn _scope, _symbol -> @valid_get_instrument_api_response end)
