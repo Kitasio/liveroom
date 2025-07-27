@@ -6,6 +6,8 @@ defmodule Track.Exchanges.BitmexState do
   alias Track.CurrencyConverter
   alias Decimal
 
+  # WARN: This should be a GenServer, not a module
+
   def new() do
     %__MODULE__{
       balance: Balance.new(),
