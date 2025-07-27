@@ -79,6 +79,41 @@ defmodule Track.Exchanges.BitmexClient.APIImplTest do
             ]} == APIImpl.get_instrument(scope, symbol)
   end
 
+  test "get_positions/2 makes a correct request and handles the response", %{
+    bypass: bypass,
+    scope: scope,
+    bitmex_setting: bitmex_setting
+  } do
+    symbol = "XBTUSD"
+    path = "/api/v1/position"
+    query = "symbol=#{symbol}"
+
+    expected_response_body = """
+    [
+      {
+        "currentQty": 100,
+        "isOpen": true,
+        "leverage": 5,
+        "realisedPnl": 456,
+        "unrealisedPnl": 123
+      }
+    ]
+    """
+
+    expect_api_call(bypass, path, query, bitmex_setting, expected_response_body)
+
+    assert {:ok,
+            [
+              %{
+                "currentQty" => 100,
+                "isOpen" => true,
+                "leverage" => 5,
+                "realisedPnl" => 456,
+                "unrealisedPnl" => 123
+              }
+            ]} == APIImpl.get_positions(scope, symbol)
+  end
+
   defp expect_api_call(bypass, path, query, bitmex_setting, expected_response_body) do
     Bypass.expect_once(bypass, "GET", path, fn conn ->
       assert conn.query_string == query
