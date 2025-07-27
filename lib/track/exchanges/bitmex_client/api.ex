@@ -7,6 +7,13 @@ defmodule Track.Exchanges.BitmexClient.API do
   @callback get_positions(scope :: Scope, symbol :: String.t() | nil) ::
               {:ok, [map()]} | {:error, term}
 
+  @callback place_market_order(
+              scope :: Scope.t(),
+              symbol :: String.t(),
+              side :: String.t(),
+              quantity :: integer()
+            ) :: {:ok, map()} | {:error, term}
+
   @doc """
   Fetches user balance from Bitmex API
 
@@ -48,6 +55,17 @@ defmodule Track.Exchanges.BitmexClient.API do
 
   """
   def get_positions(scope, symbol), do: impl().get_positions(scope, symbol)
+
+  @doc """
+  Places a market order.
+
+  ## Examples
+
+      iex> Track.Exchanges.BitmexClient.API.place_market_order(scope, "XBTUSD", "Buy", 100)
+      {:ok, %{"orderID" => "some-uuid", ...}}
+  """
+  def place_market_order(scope, symbol, side, quantity),
+    do: impl().place_market_order(scope, symbol, side, quantity)
 
   defp impl, do: Application.get_env(:track, :bitmex_client, Track.Exchanges.BitmexClient.APIImpl)
 end

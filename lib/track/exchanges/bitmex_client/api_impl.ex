@@ -41,6 +41,26 @@ defmodule Track.Exchanges.BitmexClient.APIImpl do
     |> Request.send()
   end
 
+  @impl true
+  def place_market_order(%Scope{} = scope, symbol, side, quantity) do
+    {base_url, api_key, api_secret} = get_api_config(scope)
+
+    body = %{
+      "symbol" => symbol,
+      "orderQty" => quantity,
+      "side" => side,
+      "ordType" => "Market"
+    }
+
+    Request.new()
+    |> Request.set_api_key(api_key)
+    |> Request.set_api_secret(api_secret)
+    |> Request.set_method(:post)
+    |> Request.set_url(base_url <> "/api/v1/order")
+    |> Request.set_and_encode_body(body)
+    |> Request.send()
+  end
+
   defp get_api_config(scope) do
     bitmex_settings = Exchanges.get_latest_bitmex_setting!(scope)
 
