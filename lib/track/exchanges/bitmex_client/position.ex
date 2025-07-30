@@ -22,14 +22,39 @@ defmodule Track.Exchanges.BitmexClient.Position do
     }
   end
 
-  def get_positions(%Scope{} = scope, symbol \\ "XBTUSD") do
-    case BitmexClient.API.get_positions(scope, symbol) do
-      {:ok, positions_list} ->
-        result = positions_list |> Enum.map(&from_map/1)
-        {:ok, result}
+  @doc """
+  Fetches user positions from Bitmex API, converting them to Position struct
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+  ## Examples
+
+      iex> Track.Exchanges.BitmexClient.Position.get_positions(scope, "XBTUSD")
+      {:ok,
+       [
+         %Track.Exchanges.BitmexClient.Position{
+           is_open: false,
+           realised_pnl: "0",
+           unrealised_pnl: "0",
+           current_qty: 0,
+           leverage: 100
+         }
+       ]}
+
+  """
+  def get_positions(%Scope{} = scope, symbol \\ "XBTUSD") do
+    fetch_positions_from_api(scope, symbol)
+    |> parse_response()
   end
+
+  @doc false
+  defp fetch_positions_from_api(scope, symbol) do
+    BitmexClient.API.get_positions(scope, symbol)
+  end
+
+  @doc false
+  defp parse_response({:ok, positions}) do
+    result = positions |> Enum.map(&from_map/1)
+    {:ok, result}
+  end
+
+  defp parse_response({:error, reason}), do: {:error, reason}
 end
