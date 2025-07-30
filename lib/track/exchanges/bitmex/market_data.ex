@@ -5,6 +5,7 @@ defmodule Track.Exchanges.Bitmex.MarketData do
   alias Track.Exchanges.MarketDataAPI.Instrument
   alias Track.Exchanges.Bitmex.API
 
+  @impl true
   def get_instrument(%Scope{} = scope, symbol) do
     send_request_to_api(scope, symbol)
     |> parse_response()

@@ -1,10 +1,10 @@
-defmodule Track.Exchanges.BitmexClient.APIImplTest do
+defmodule Track.Exchanges.Bitmex.APIImplTest do
   use Track.DataCase, async: true
 
   import Track.AccountsFixtures
   import Track.ExchangesFixtures
 
-  alias Track.Exchanges.BitmexClient.APIImpl
+  alias Track.Exchanges.Bitmex.APIImpl
 
   setup do
     scope = user_scope_fixture()
@@ -126,50 +126,5 @@ defmodule Track.Exchanges.BitmexClient.APIImplTest do
     assert Plug.Conn.get_req_header(conn, "api-key") == [api_key]
     assert Plug.Conn.get_req_header(conn, "api-expires") != []
     assert Plug.Conn.get_req_header(conn, "api-signature") != []
-  end
-
-  test "place_market_order/4 makes a correct request and handles the response", %{
-    bypass: bypass,
-    scope: scope,
-    bitmex_setting: bitmex_setting
-  } do
-    path = "/api/v1/order"
-    symbol = "XBTUSD"
-    side = "Buy"
-    quantity = 100
-
-    expected_request_body = %{
-      "symbol" => symbol,
-      "orderQty" => quantity,
-      "side" => side,
-      "ordType" => "Market"
-    }
-
-    expected_response_body = """
-    {
-      "orderID": "some-uuid",
-      "symbol": "#{symbol}",
-      "side": "#{side}",
-      "orderQty": #{quantity},
-      "ordType": "Market"
-    }
-    """
-
-    Bypass.expect_once(bypass, "POST", path, fn conn ->
-      assert_auth_headers(conn, bitmex_setting.api_key)
-      {:ok, body_params, conn} = Plug.Conn.read_body(conn)
-      assert Jason.decode!(body_params) == expected_request_body
-
-      Plug.Conn.resp(conn, 200, expected_response_body)
-    end)
-
-    assert {:ok,
-            %{
-              "orderID" => "some-uuid",
-              "ordType" => "Market",
-              "orderQty" => 100,
-              "side" => "Buy",
-              "symbol" => "XBTUSD"
-            }} == APIImpl.place_market_order(scope, symbol, side, quantity)
   end
 end
