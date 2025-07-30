@@ -23,4 +23,14 @@ defmodule Track.Exchanges.AccountTest do
            ) ==
              valid_response
   end
+
+  test "raises if the last argument is not a module" do
+    assert_raise FunctionClauseError, fn ->
+      Track.Exchanges.Account.get_balance(
+        user_scope_fixture(),
+        "USD",
+        "binance"
+      )
+    end
+  end
 end
