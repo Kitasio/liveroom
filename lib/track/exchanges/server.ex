@@ -44,7 +44,7 @@ defmodule Track.Exchanges.Server do
 
   @impl true
   def handle_info(:work, state) do
-    balance_result = Account.get_balance(state.account_module, state.scope, "XBt")
+    balance_result = Account.get_balance(state.scope, "XBt", state.account_module)
     state = %{state | account_balance: balance_result}
 
     broadcast(state.scope, {:updated_balance, balance_result})

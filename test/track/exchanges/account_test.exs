@@ -17,9 +17,9 @@ defmodule Track.Exchanges.AccountTest do
     end)
 
     assert Track.Exchanges.Account.get_balance(
-             Track.Exchanges.MockAccountAPI,
              user_scope_fixture(),
-             currency
+             currency,
+             Track.Exchanges.MockAccountAPI
            ) ==
              valid_response
   end
