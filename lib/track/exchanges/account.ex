@@ -1,4 +1,4 @@
-defmodule Track.Exchanges.AccountClient do
+defmodule Track.Exchanges.Account do
   alias Track.Accounts.Scope
   alias Track.Exchanges.AccountAPI.Balance
 

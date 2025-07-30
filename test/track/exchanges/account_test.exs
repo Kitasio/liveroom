@@ -1,4 +1,4 @@
-defmodule Track.Exchanges.AccountClientTest do
+defmodule Track.Exchanges.AccountTest do
   use Track.DataCase
   use ExUnit.Case, async: true
   import Mox
@@ -16,7 +16,7 @@ defmodule Track.Exchanges.AccountClientTest do
       valid_response
     end)
 
-    assert Track.Exchanges.AccountClient.get_balance(
+    assert Track.Exchanges.Account.get_balance(
              Track.Exchanges.MockAccountAPI,
              user_scope_fixture(),
              currency

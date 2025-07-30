@@ -1,7 +1,7 @@
 defmodule Track.Exchanges.Server do
   alias Track.Exchanges.AccountAPI.Balance
   alias Track.Accounts.Scope
-  alias Track.Exchanges.AccountClient
+  alias Track.Exchanges.Account
   use GenServer
 
   def start_link(%Scope{} = scope) do
@@ -44,7 +44,7 @@ defmodule Track.Exchanges.Server do
 
   @impl true
   def handle_info(:work, state) do
-    balance_result = AccountClient.get_balance(state.account_module, state.scope, "XBt")
+    balance_result = Account.get_balance(state.account_module, state.scope, "XBt")
     state = %{state | account_balance: balance_result}
 
     broadcast(state.scope, {:updated_balance, balance_result})
