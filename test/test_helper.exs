@@ -9,3 +9,4 @@ Application.put_env(:track, :bitmex_api_module, Track.Exchanges.Bitmex.MockAPI)
 
 Mox.defmock(Track.Exchanges.MockAccountAPI, for: Track.Exchanges.AccountAPI)
 Mox.defmock(Track.Exchanges.MockMarketDataAPI, for: Track.Exchanges.MarketDataAPI)
+Mox.defmock(Track.Exchanges.MockTradingAPI, for: Track.Exchanges.TradingAPI)
